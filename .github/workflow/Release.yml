@@ -1,0 +1,69 @@
+name: Release Executables
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+    - name: Checkout repository
+      uses: [actions/checkout](https://github.com)@v4
+
+    - name: Install dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get install build-essential
+
+    - name: Build source
+      run: |
+        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          gcc src/Koboi.c src/Lexer.c -o Koboi.exe
+        else
+          gcc src/Koboi.c src/Lexer.c -o Koboi
+        fi
+
+    - name: Archive artifacts
+      uses: [actions/upload-artifact](https://github.com)@v4
+      with:
+        name: Koboi-build-${{ matrix.os }}
+        path: |
+          Koboi*
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: [actions/checkout](https://github.com)@v4
+
+    - name: Download artifacts
+      uses: [actions/download-artifact](https://github.com)@v4
+      with:
+        path: artifacts
+
+    - name: List artifacts
+      run: ls -R artifacts
+
+    - name: Create Release
+      uses: [softprops/action-gh-release](https://github.com/marketplace/actions/create-github-release)@v1
+      with:
+        files: |
+          artifacts/Koboi-build-ubuntu-latest/Koboi
+          artifacts/Koboi-build-windows-latest/Koboi.exe
+          artifacts/Koboi-build-macos-latest/Koboi
+          
+        name: Release ${{ github.ref_name }} 
+        draft: false
+        prerelease: false
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
