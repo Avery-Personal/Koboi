@@ -5,7 +5,7 @@ int xx = 7 // Declaration-first, integer variable
 xxx : int = 9 // Constraint integer variable
 
 global y = 5.5 // Globalized variable
-silent yy = 2.75 // Silented variable (Only callable by its scope [Can't be called by child scopes]) | IN WORKS, NOT USED AON
+silent yy = 2.75 // Silented variable (Only callable by its scope [Can't be called by child scopes], dies after new scope is met OR used on a value) | IN WORKS, NOT USED AON
 private yyy = 12345 // Private variable (Private variable that cannot be called into call types [functions], child scopes, etc.) | IN WORKS, NOT USED AON
 export yyyy = 123.45 // Exported variable (Public data outside of modules)
 
@@ -255,7 +255,7 @@ fn GetFile() requires env Filesystem {
     return OpenFile("a.txt")
 }
 
-fn Main() provides env Filesystem {
+fn main() provides env Filesystem {
     FILE : File = GetFile()
     
     Sum = Add(3, 7)
