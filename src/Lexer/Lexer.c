@@ -43,20 +43,136 @@ void LexerSkipWC(Lexer *_Lexer) {
     while (!LexerIsAtEnd(_Lexer)) {
         char Character = LexerPeek(_Lexer);
 
-        if (Character == ' ' || Character == '\t' || Character == '\r' || Character == '\n') {
+        if (Character == ' ' || Character == '\t' || Character == '\r') {
             LexerNext(_Lexer);
-        } else if (Character == '-' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '-') {
+        } else if (Character == '\n') {
+            LexerNext(_Lexer);
+        } else if (Character == '/' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '/') {
             LexerNext(_Lexer);
             LexerNext(_Lexer);
 
             while (!LexerIsAtEnd(_Lexer) && LexerPeek(_Lexer) != '\n')
                 LexerNext(_Lexer);
-        } else break;
+        } else if (Character == '/' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '*') {
+            LexerNext(_Lexer);
+            LexerNext(_Lexer);
+
+            while (!LexerIsAtEnd(_Lexer)) {
+                if (LexerPeek(_Lexer) == '*' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '/') {
+                    LexerNext(_Lexer);
+                    LexerNext(_Lexer);
+
+                    break;
+                }
+
+                LexerNext(_Lexer);
+            }
+        }
+
+        else break;
     }
 }
 
-TokenType ResolveIdentifier(const char* Start, size_t Len) {
-    if (Len == 8 && memcmp(Start, "function", 8) == 0) return TOKEN_FUNCTION;
+TokenType ResolveIdentifier(const char *Start, size_t Len) {
+    switch (Start[0]) {
+        case 'f':
+            if (Len == 2 && memcmp(Start, "fn", 2) == 0) return TOKEN_FUNCTION;
+            if (Len == 3 && memcmp(Start, "for", 3) == 0) return TOKEN_FOR;
+
+            break;
+
+        case 'r':
+            if (Len == 6 && memcmp(Start, "return", 6) == 0) return TOKEN_RETURN;
+            if (Len == 8 && memcmp(Start, "requires", 8) == 0) return TOKEN_REQUIRES;
+
+            break;
+
+        case 'p':
+            if (Len == 8 && memcmp(Start, "provides", 8) == 0) return TOKEN_PROVIDES;
+            if (Len == 7 && memcmp(Start, "private", 7) == 0) return TOKEN_PRIVATE;
+
+            break;
+
+        case 'e':
+            if (Len == 4 && memcmp(Start, "else", 4) == 0) return TOKEN_ELSE;
+            if (Len == 4 && memcmp(Start, "enum", 4) == 0) return TOKEN_ENUM;
+            if (Len == 6 && memcmp(Start, "export", 6) == 0) return TOKEN_EXPORT;
+            if (Len == 3 && memcmp(Start, "env", 3) == 0) return TOKEN_ENV;
+
+            break;
+
+        case 'i':
+            if (Len == 2 && memcmp(Start, "if", 2) == 0) return TOKEN_IF;
+            if (Len == 3 && memcmp(Start, "int", 3) == 0) return TOKEN_INT;
+
+            break;
+
+        case 's':
+            if (Len == 6 && memcmp(Start, "static", 6) == 0) return TOKEN_STATIC;
+            if (Len == 6 && memcmp(Start, "silent", 6) == 0) return TOKEN_SILENT;
+            if (Len == 3 && memcmp(Start, "sys", 3) == 0) return TOKEN_SYS;
+            if (Len == 4 && memcmp(Start, "safe", 4) == 0) return TOKEN_SAFE;
+
+            break;
+
+        case 'u':
+            if (Len == 6 && memcmp(Start, "unsafe", 6) == 0) return TOKEN_UNSAFE;
+
+            break;
+
+        case 't':
+            if (Len == 7 && memcmp(Start, "trusted", 7) == 0) return TOKEN_TRUSTED;
+
+            break;
+
+        case 'Character':
+            if (Len == 5 && memcmp(Start, "const", 5) == 0) return TOKEN_CONST;
+            if (Len == 5 && memcmp(Start, "check", 5) == 0) return TOKEN_CHECK;
+
+            break;
+
+        case 'a':
+            if (Len == 6 && memcmp(Start, "assume", 6) == 0) return TOKEN_ASSUME;
+
+            break;
+
+        case 'd':
+            if (Len == 5 && memcmp(Start, "defer", 5) == 0) return TOKEN_DEFER;
+
+            break;
+
+        case 'm':
+            if (Len == 5 && memcmp(Start, "match", 5) == 0) return TOKEN_MATCH;
+            if (Len == 5 && memcmp(Start, "macro", 5) == 0) return TOKEN_MACRO;
+            if (Len == 6 && memcmp(Start, "module", 6) == 0) return TOKEN_MODULE;
+
+            break;
+
+        case 'n':
+            if (Len == 7 && memcmp(Start, "noalias", 7) == 0) return TOKEN_NOALIAS;
+
+            break;
+
+        case 'b':
+            if (Len == 4 && memcmp(Start, "bool", 4) == 0) return TOKEN_BOOL;
+
+            break;
+
+        case 'v':
+            if (Len == 4 && memcmp(Start, "void", 4) == 0) return TOKEN_VOID;
+
+            break;
+
+        case 'g':
+            if (Len == 6 && memcmp(Start, "global", 6) == 0) return TOKEN_GLOBAL;
+
+            break;
+    }
+
+    if (Len == 4 && memcmp(Start, "true", 4) == 0) return TOKEN_BOOL_LITERAL;
+    if (Len == 5 && memcmp(Start, "false", 5) == 0) return TOKEN_BOOL_LITERAL;
+
+    if (Len == 4 && memcmp(Start, "None", 4) == 0) return TOKEN_NONE;
     
     return TOKEN_IDENTIFIER;
 }
@@ -160,10 +276,10 @@ Token LexerNextToken(Lexer *_Lexer) {
         _Token.Length = _Lexer -> Cursor - Start;
 
         if (IsFloat) {
-            _Token.Type = TOKEN_FLOAT;
+            _Token.Type = TOKEN_FLOAT_LITERAL;
             _Token.Literal.Float = strtod(_Token.Start, NULL);
         } else {
-            _Token.Type = TOKEN_INT;
+            _Token.Type = TOKEN_INT_LITERAL;
             _Token.Literal.Int = (uint64_t) strtoull(_Token.Start, NULL, 10);
         }
     } else if (Character == '"') {
@@ -215,18 +331,105 @@ Token LexerNextToken(Lexer *_Lexer) {
         _Token.Literal.Int = (uint64_t) Value;
     } else {
         switch (Character) {
-            case '+': _Token.Type = TOKEN_PLUS; break;
+            case '+':
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_PLUS_EQUAL;
+                } else {
+                    _Token.Type = TOKEN_PLUS;
+                }
+
+                break;
+
             case '-':
-                if (LexerPeek(_Lexer) == '>') {
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_MINUS_EQUAL;
+                } else if (LexerPeek(_Lexer) == '>') {
                     LexerNext(_Lexer);
 
                     _Token.Type = TOKEN_ARROW;
                 } else {
                     _Token.Type = TOKEN_MINUS;
                 }
-                
+
                 break;
 
+            case '=':
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_EQUAL_EQUAL;
+                } else {
+                    _Token.Type = TOKEN_EQUAL;
+                }
+
+                break;
+
+            case '!':
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_NE;
+                } else {
+                    _Token.Type = TOKEN_EXCLAMATION;
+                }
+
+                break;
+
+            case '>':
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_GE;
+                } else if (LexerPeek(_Lexer) == '>') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_ARROW;
+                } else {
+                    _Token.Type = TOKEN_GT;
+                }
+
+                break;
+
+            case '<':
+                if (LexerPeek(_Lexer) == '=') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_LE;
+                } else {
+                    _Token.Type = TOKEN_LT;
+                }
+
+                break;
+
+            case '.':
+                if (LexerPeek(_Lexer) == '.') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_DOT_DOT;
+                } else {
+                    _Token.Type = TOKEN_DOT;
+                }
+
+                break;
+            
+            case ':':
+                if (LexerPeek(_Lexer) == ':') {
+                    LexerNext(_Lexer);
+
+                    _Token.Type = TOKEN_DOUBLE_COLON;
+                } else {
+                    _Token.Type = TOKEN_COLON;
+                }
+
+                break;
+
+            case '&': _Token.Type = TOKEN_AMPERSAND; break;
+            case '@': _Token.Type = TOKEN_AT; break;
+            case '#': _Token.Type = TOKEN_HASH; break;
             case '(': _Token.Type = TOKEN_LPAREN; break;
             case ')': _Token.Type = TOKEN_RPAREN; break;
             case '{': _Token.Type = TOKEN_LBRACE; break;

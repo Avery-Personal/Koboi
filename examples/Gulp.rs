@@ -74,23 +74,23 @@ b = a // A is now invalid due to ownership
 print(a) // Error
 
 a2 = "Hello, World!"
-b2 = &a // BORROW a2 value, cannot edit a2 due to such
+b2 = &a2 // BORROW a2 value, cannot edit a2 due to such
 
 a2 = "Hi, World!" // Error
 
 a3 = "Hello, World!"
-b3 = @a // COPY a3 value, allows for editing of a3 while not editing b3's value too
+b3 = @a3 // COPY a3 value, allows for editing of a3 while not editing b3's value too
 
 a3 = "Hi, World!" // Valid :D
 
 a4 = "Hello, World!"
-b4 = a.. // TRAILING a4 value, allows for editing of a4, but edits all values also using it
+b4 = a4.. // TRAILING a4 value, allows for editing of a4, but edits all values also using it
 
 a4 = "Hi, World!" // Valid, changed b4 to such too
 b4 = "Hello, World!" // Error, usage of trailing owner a4
 
 a5 = "Hello, World!"
-b5 = #a // # Uses the DIRECT memory address of a5, followed up by any ownership symbol wanted; allows for mutable borrowing.
+b5 = #a5 // # Uses the DIRECT memory address of a5, followed up by any ownership symbol wanted; allows for mutable borrowing.
 
 int c = 5
 int v = 7
