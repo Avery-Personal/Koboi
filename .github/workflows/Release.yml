@@ -11,16 +11,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    
+
     steps:
     - name: Checkout repository
-      uses: [actions/checkout](https://github.com)@v4
+      uses: actions/checkout@v4
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get install build-essential
 
     - name: Build source
+      shell: bash
       run: |
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
           gcc src/Koboi.c src/Lexer.c -o Koboi.exe
@@ -29,7 +30,7 @@ jobs:
         fi
 
     - name: Archive artifacts
-      uses: [actions/upload-artifact](https://github.com)@v4
+      uses: actions/upload-artifact@v4
       with:
         name: Koboi-build-${{ matrix.os }}
         path: |
@@ -43,10 +44,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: [actions/checkout](https://github.com)@v4
+      uses: actions/download-artifact@v4
 
     - name: Download artifacts
-      uses: [actions/download-artifact](https://github.com)@v4
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 
@@ -54,7 +55,7 @@ jobs:
       run: ls -R artifacts
 
     - name: Create Release
-      uses: [softprops/action-gh-release](https://github.com/marketplace/actions/create-github-release)@v1
+      uses: softprops/action-gh-release@v1
       with:
         files: |
           artifacts/Koboi-build-ubuntu-latest/Koboi
