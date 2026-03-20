@@ -17,6 +17,8 @@ TokenType ResolveIdentifier(const char* Start, size_t Len);
 Lexer LexerCreate(const char *Source);
 
 char LexerPeek(Lexer *_Lexer);
+Token LexerPeekToken(Lexer *_Lexer);
+Token LexerConsumePeek(Lexer *_Lexer);
 char LexerNext(Lexer *_Lexer);
 
 static void LexerErrorAt(Lexer *_Lexer, const char *Message);

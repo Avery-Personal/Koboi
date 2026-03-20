@@ -26,8 +26,115 @@ int IsAlphanumeric(int Character) {
         return 0;
 }
 
+int TokenIsOperator(TokenType Type) {
+    switch (Type) {
+        case TOKEN_PLUS:
+        case TOKEN_MINUS:
+        case TOKEN_STAR:
+        case TOKEN_SLASH:
+        case TOKEN_PERCENT: return 1;
+
+        default: return 0;
+    }
+}
+
 const char *TokenTypeToString(TokenType Type) {
     switch (Type) {
+        case TOKEN_IDENTIFIER: return "IDENTIFIER";
+        case TOKEN_IDENTIFIER_SPECIAL: return "IDENTIFIER_SPECIAL";
+
+        case TOKEN_INT_LITERAL: return "INT_LITERAL";
+        case TOKEN_FLOAT_LITERAL: return "FLOAT_LITERAL";
+        case TOKEN_STRING_LITERAL: return "STRING_LITERAL";
+        case TOKEN_CHAR_LITERAL: return "CHAR_LITERAL";
+        case TOKEN_BOOL_LITERAL: return "BOOL_LITERAL";
+
+        case TOKEN_NONE: return "NONE";
+
+        case TOKEN_GLOBAL: return "GLOBAL";
+        case TOKEN_STATIC: return "STATIC";
+        case TOKEN_CONST: return "CONST";
+        case TOKEN_SILENT: return "SILENT";
+        case TOKEN_PRIVATE: return "PRIVATE";
+        case TOKEN_EXPORT: return "EXPORT";
+
+        case TOKEN_FUNCTION: return "FUNCTION";
+        case TOKEN_RETURN: return "RETURN";
+        case TOKEN_MODULE: return "MODULE";
+
+        case TOKEN_ENV: return "ENV";
+        case TOKEN_REQUIRES: return "REQUIRES";
+        case TOKEN_PROVIDES: return "PROVIDES";
+        case TOKEN_SYS: return "SYS";
+
+        case TOKEN_IF: return "IF";
+        case TOKEN_ELSE: return "ELSE";
+        case TOKEN_FOR: return "FOR";
+        case TOKEN_WHILE: return "WHILE";
+        case TOKEN_BREAK: return "BREAK";
+        case TOKEN_MATCH: return "MATCH";
+
+        case TOKEN_UNSAFE: return "UNSAFE";
+        case TOKEN_SAFE: return "SAFE";
+        case TOKEN_TRUSTED: return "TRUSTED";
+        case TOKEN_CHECK: return "CHECK";
+        case TOKEN_ASSUME: return "ASSUME";
+        case TOKEN_DEFER: return "DEFER";
+
+        case TOKEN_INT: return "INT";
+        case TOKEN_FLOAT: return "FLOAT";
+        case TOKEN_BOOL: return "BOOL";
+        case TOKEN_STRING: return "STRING";
+        case TOKEN_VOID: return "VOID";
+
+        case TOKEN_ENUM: return "ENUM";
+        case TOKEN_MACRO: return "MACRO";
+        case TOKEN_EXPOSE: return "EXPOSE";
+        case TOKEN_NOALIAS: return "NOALIAS";
+
+        case TOKEN_EQUAL: return "EQUAL";
+        case TOKEN_PLUS_EQUAL: return "PLUS_EQUAL";
+        case TOKEN_MINUS_EQUAL: return "MINUS_EQUAL";
+
+        case TOKEN_PLUS: return "PLUS";
+        case TOKEN_MINUS: return "MINUS";
+        case TOKEN_STAR: return "STAR";
+        case TOKEN_SLASH: return "SLASH";
+        case TOKEN_PERCENT: return "PERCENT";
+
+        case TOKEN_EQUAL_EQUAL: return "EQUAL_EQUAL";
+        case TOKEN_NE: return "NOT_EQUAL";
+        case TOKEN_GT: return "GREATER_THAN";
+        case TOKEN_GE: return "GREATER_EQUAL";
+        case TOKEN_LT: return "LESS_THAN";
+        case TOKEN_LE: return "LESS_EQUAL";
+
+        case TOKEN_AND: return "AND";
+        case TOKEN_OR: return "OR";
+        case TOKEN_EXCLAMATION: return "EXCLAMATION";
+
+        case TOKEN_DOT: return "DOT";
+        case TOKEN_DOT_DOT: return "DOT_DOT";
+
+        case TOKEN_AMPERSAND: return "AMPERSAND";
+        case TOKEN_AT: return "AT";
+        case TOKEN_HASH: return "HASH";
+
+        case TOKEN_ARROW: return "ARROW";
+        case TOKEN_COLON: return "COLON";
+        case TOKEN_DOUBLE_COLON: return "DOUBLE_COLON";
+        case TOKEN_COMMA: return "COMMA";
+        case TOKEN_SEMICOLON: return "SEMICOLON";
+
+        case TOKEN_LPAREN: return "LPAREN";
+        case TOKEN_RPAREN: return "RPAREN";
+        case TOKEN_LBRACE: return "LBRACE";
+        case TOKEN_RBRACE: return "RBRACE";
+        case TOKEN_LBRACKET: return "LBRACKET";
+        case TOKEN_RBRACKET: return "RBRACKET";
+
+        case TOKEN_NEWLINE: return "NEWLINE";
+
         case TOKEN_EOF: return "EOF";
         case TOKEN_ERROR: return "ERROR";
 
@@ -125,7 +232,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
 
             break;
 
-        case 'Character':
+        case 'c':
             if (Len == 5 && memcmp(Start, "const", 5) == 0) return TOKEN_CONST;
             if (Len == 5 && memcmp(Start, "check", 5) == 0) return TOKEN_CHECK;
 
@@ -196,8 +303,35 @@ char LexerPeek(Lexer *_Lexer) {
     return _Lexer -> Source[_Lexer -> Cursor];
 }
 
+Token LexerPeekToken(Lexer *_Lexer) {
+    if (!_Lexer -> HasPeeked) {
+        _Lexer -> PeekedToken = LexerNextToken(_Lexer);
+        _Lexer -> HasPeeked = 1;
+    }
+
+    return _Lexer -> PeekedToken;
+}
+
+Token LexerConsumePeek(Lexer *_Lexer) {
+    if (_Lexer -> HasPeeked) {
+        _Lexer -> HasPeeked = 0;
+        return _Lexer -> PeekedToken;
+    }
+
+    return LexerNextToken(_Lexer);
+}
+
 char LexerNext(Lexer *_Lexer) {
     char Character = LexerPeek(_Lexer);
+
+    switch (Character) {
+        case '{': _Lexer -> BraceDepth++; break;
+        case '}': _Lexer -> BraceDepth--; break;
+        case '(': _Lexer -> ParenDepth++; break;
+        case ')': _Lexer -> ParenDepth--; break;
+        case '[': _Lexer -> BracketDepth++; break;
+        case ']': _Lexer -> BracketDepth--; break;
+    }
 
     if (Character == '\n') {
         _Lexer -> Line++;
@@ -260,6 +394,24 @@ Token LexerNextToken(Lexer *_Lexer) {
 
         int IsFloat = 0;
 
+        if (Character == '0') {
+            char Next = LexerPeek(_Lexer);
+
+            if (Next == 'x') {
+                LexerNext(_Lexer);
+
+                size_t Start = _Lexer -> Cursor;
+
+                while (IsDigit(LexerPeek(_Lexer)))
+                    LexerNext(_Lexer);
+
+                _Token.Type = TOKEN_INT_LITERAL;
+                _Token.Literal.Int = strtoul(_Lexer -> Source + Start, NULL, 16);
+
+                return _Token;
+            }
+        }
+
         while (IsDigit(LexerPeek(_Lexer)))
             LexerNext(_Lexer);
 
@@ -292,14 +444,24 @@ Token LexerNextToken(Lexer *_Lexer) {
                 break;
 
             if (NextCharacter == '\n') {
-                LexerErrorAt(_Lexer, "newline in string literal");
+                LexerErrorAt(_Lexer, "newline in string literal");\
                 LexingError(_Lexer);
 
                 break;
             }
 
-            if (NextCharacter == '\\')
-                LexerNext(_Lexer);
+            if (NextCharacter == '\\') {
+                char Escape = LexerNext(_Lexer);
+
+                switch (Escape) {
+                    case 'n': break;
+                    case 't': break;
+                    case '\\': break;
+                    case '"': break;
+
+                    default: LexerErrorAt(_Lexer, "invalid escape sequence");
+                }
+            }
         }
 
         if (LexerIsAtEnd(_Lexer)) {
@@ -445,6 +607,14 @@ Token LexerNextToken(Lexer *_Lexer) {
                 LexerErrorAt(_Lexer, "unexpected character");
                 LexingError(_Lexer);
         }
+    }
+
+    if (_Token.Type == TOKEN_MACRO) {
+        _Lexer -> InMacro = 1;
+    }
+
+    if (_Token.Type == TOKEN_UNSAFE) {
+        _Lexer -> InUnsafe = 1;
     }
 
     return _Token;

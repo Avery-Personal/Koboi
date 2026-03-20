@@ -119,6 +119,16 @@ typedef enum {
     LEXER_ERROR_INVALID_OPERATOR,
 } LexerErrorType;
 
+typedef enum {
+    TOKEN_FLAG_NONE = 0,
+    TOKEN_FLAG_KEYWORD = 1 << 0,
+    TOKEN_FLAG_LITERAL = 1 << 1,
+    TOKEN_FLAG_OPERATOR = 1 << 2,
+    TOKEN_FLAG_ASSIGNMENT = 1 << 3,
+    TOKEN_FLAG_UNARY = 1 << 4,
+    TOKEN_FLAG_BINARY = 1 << 5,
+} TokenFlag;
+
 typedef struct {
     TokenType Type;
 
@@ -130,6 +140,9 @@ typedef struct {
 
     uint32_t FileID;
     uint32_t ScopeID;
+
+    uint32_t TokenIndex;
+    uint32_t Flags;
 
     union {
         double Float;
@@ -146,6 +159,11 @@ typedef struct {
     size_t Capacity;
 
     size_t Cursor;
+
+    Token *Current;
+    Token *Previous;
+
+    int PanicMode;
 } TokenStream;
 
 typedef struct {
@@ -158,6 +176,8 @@ typedef struct {
 
     const char *ContextStart;
     uint32_t ContextLength;
+
+    const char *Hint;
 } LexerError;
 
 typedef struct {
@@ -169,9 +189,20 @@ typedef struct {
     uint32_t Line;
     uint32_t Column;
 
-    int InString;
-    int InComment;
+    uint32_t FileID;
+    
+    LexerMode Mode;
+
+    int BraceDepth;
+    int ParenDepth;
+    int BracketDepth;
+
     int InMacro;
+    int InUnsafe;
+    int InMatch;
+
+    Token PeekedToken;
+    int HasPeeked;
 
     LexerError Error;
     int HasError;
