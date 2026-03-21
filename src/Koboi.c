@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "Lexer/Lexer.h"
+#include "Parser/Parser.h"
 
 char *ReadFile(const char *Path) {
     FILE *File = fopen(Path, "rb");
@@ -45,6 +46,12 @@ int main(int argc, char **argv) {
     __LEXER__.CurrentFile = argv[1];
 
     TokenStream __TOKENS__ = Tokenize(&__LEXER__);
+    Parser __PARSER__ = CreateParser(&__TOKENS__);
+    ASTProgram *__PROGRAM__ = ParseProgram(&__PARSER__);
+
+    if (__PARSER__.HasError) {
+        return 1;
+    }
 
     free(Source);
 

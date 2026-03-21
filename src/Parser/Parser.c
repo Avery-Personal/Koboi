@@ -4,9 +4,8 @@
 #include <stdarg.h>
 #include <assert.h>
 
-#include "Tokens.h"
-#include "Lexer.h"
-#include "AST.h"
+#include "../Lexer/Tokens.h"
+#include "../Lexer/Lexer.h"
 #include "Parser.h"
 
 static ASTStatement *ParseMatchStatement(Parser *_Parser);
@@ -586,10 +585,10 @@ ASTExpression *ParsePostfix(Parser *_Parser) {
             Expression = BinaryExpression;
         } else if (ParserMatch(_Parser, TOKEN_AT)) {
             Token *Indez = Expect(_Parser, TOKEN_INT_LITERAL, "history index");
-            ASTExpression *IndexExpresison = NewExpression(EXPR_LITERAL);
+            ASTExpression *IndexExpresisonLiteral = NewExpression(EXPR_LITERAL);
 
-            IndexExpresison -> Literal.LiteralKind = TYPE_INT;
-            IndexExpresison -> Literal.Int = Indez -> Literal.Int;
+            IndexExpresisonLiteral -> Literal.LiteralKind = TYPE_INT;
+            IndexExpresisonLiteral -> Literal.Int = Indez -> Literal.Int;
 
             if (ParserCheck(_Parser, TOKEN_IDENTIFIER)) {
                 Token *Branch = _Parser -> Current;

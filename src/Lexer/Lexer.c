@@ -291,6 +291,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
 
         case 'b':
             if (Len == 4 && memcmp(Start, "bool", 4) == 0) return TOKEN_BOOL;
+            if (Len == 5 && memcmp(Start, "break", 5) == 0) return TOKEN_BREAK;
 
             break;
 
@@ -307,6 +308,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
         case 'w':
             if (Len == 5 && memcmp(Start, "world", 5) == 0) return TOKEN_WORLD;
             if (Len == 4 && memcmp(Start, "with", 4) == 0) return TOKEN_WITH;
+            if (Len == 5 && memcmp(Start, "while", 5) == 0) return TOKEN_WHILE;
 
             break;
 

@@ -385,7 +385,7 @@ fn Modify(a : noalias [int], b : noalias [int]) {
 }
 
 fn PrintLoop(LOOPS : int) {
-    repeat(7, {pln(LOOPS)})
+    repeat(LOOPS, {pln(LOOPS)})
 }
 
 unsafe fn PrintArray(Array : [int], Index : int) {
