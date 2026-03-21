@@ -59,16 +59,23 @@ const char *TokenTypeToString(TokenType Type) {
 
         case TOKEN_NONE: return "NONE";
 
+        case TOKEN_USING: return "USING";
+
         case TOKEN_GLOBAL: return "GLOBAL";
         case TOKEN_STATIC: return "STATIC";
         case TOKEN_CONST: return "CONST";
         case TOKEN_SILENT: return "SILENT";
         case TOKEN_PRIVATE: return "PRIVATE";
+        case TOKEN_LINEAR: return "LINEAR";
+        case TOKEN_HISTORY: return "HISTORY";
+        case TOKEN_SYMBOLIC: return "SYMBOLIC";
         case TOKEN_EXPORT: return "EXPORT";
 
         case TOKEN_FUNCTION: return "FUNCTION";
         case TOKEN_RETURN: return "RETURN";
         case TOKEN_MODULE: return "MODULE";
+        case TOKEN_CONTEXT: return "CONTEXT";
+        case TOKEN_CONCEPT: return "CONCEPT";
 
         case TOKEN_ENV: return "ENV";
         case TOKEN_REQUIRES: return "REQUIRES";
@@ -82,6 +89,8 @@ const char *TokenTypeToString(TokenType Type) {
         case TOKEN_BREAK: return "BREAK";
         case TOKEN_MATCH: return "MATCH";
 
+        case TOKEN_COMPTIME: return "COMPTIME";
+        case TOKEN_TRANSACTION: return "TRANSACTION";
         case TOKEN_UNSAFE: return "UNSAFE";
         case TOKEN_SAFE: return "SAFE";
         case TOKEN_TRUSTED: return "TRUSTED";
@@ -97,8 +106,17 @@ const char *TokenTypeToString(TokenType Type) {
 
         case TOKEN_ENUM: return "ENUM";
         case TOKEN_MACRO: return "MACRO";
+        case TOKEN_STATE: return "STATE";
+        case TOKEN_STRUCT: return "STRUCT";
+        case TOKEN_PARTIAL: return "PARTIAL";
         case TOKEN_EXPOSE: return "EXPOSE";
+        case TOKEN_WITH: return "WITH";
         case TOKEN_NOALIAS: return "NOALIAS";
+        case TOKEN_REGION: return "REGION";
+        case TOKEN_ROLLBACK: return "ROLLBACK";
+
+        case TOKEN_WORLD: return "WORLD";
+        case TOKEN_EXTENDS: return "EXTENDS";
 
         case TOKEN_EQUAL: return "EQUAL";
         case TOKEN_PLUS_EQUAL: return "PLUS_EQUAL";
@@ -110,6 +128,7 @@ const char *TokenTypeToString(TokenType Type) {
         case TOKEN_SLASH: return "SLASH";
         case TOKEN_PERCENT: return "PERCENT";
 
+        case TOKEN_MATCH_ARROW: return "MATCH_ARROW";
         case TOKEN_EQUAL_EQUAL: return "EQUAL_EQUAL";
         case TOKEN_NE: return "NOT_EQUAL";
         case TOKEN_GT: return "GREATER_THAN";
@@ -124,6 +143,7 @@ const char *TokenTypeToString(TokenType Type) {
         case TOKEN_DOT: return "DOT";
         case TOKEN_DOT_DOT: return "DOT_DOT";
 
+        case TOKEN_DOLLAR: return "DOLLAR";
         case TOKEN_AMPERSAND: return "AMPERSAND";
         case TOKEN_AT: return "AT";
         case TOKEN_HASH: return "HASH";
@@ -163,6 +183,9 @@ void LexerSkipWC(Lexer *_Lexer) {
         } else if (Character == '\n') {
             LexerNext(_Lexer);
         } else if (Character == '^') {
+            while (!LexerIsAtEnd(_Lexer) && LexerPeek(_Lexer) != '\n')
+                LexerNext(_Lexer);
+        } else if (Character == '!' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '^') {
             while (!LexerIsAtEnd(_Lexer) && LexerPeek(_Lexer) != '\n')
                 LexerNext(_Lexer);
         } else if (Character == '/' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '/') {

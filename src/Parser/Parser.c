@@ -308,6 +308,14 @@ static ASTType *NewType(ASTTypeKind Kind) {
 ASTType *ParseType(Parser *_Parser) {
     TraceEnter("ParseType", _Parser);
 
+    if (ParserMatch(_Parser, TOKEN_NOALIAS)) {
+        ASTType *Inner = ParseType(_Parser);
+
+        TraceExit("ParseType", _Parser);
+
+        return Inner;
+    }
+
     ASTType *_Token = NULL;
 
     if (ParserMatch(_Parser, TOKEN_LBRACKET)) {
@@ -905,9 +913,9 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
     } else {
         ASTStatement *Single = ParseStatement(_Parser);
 
-        ThenStmts = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+        ThenStmts    = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
         ThenStmts[0] = Single;
-        ThenCount = 1;
+        ThenCount    = 1;
     }
 
     if (ParserMatch(_Parser, TOKEN_ELSE)) {
@@ -916,14 +924,14 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
 
             ASTStatement *ElseIf = ParseIfStatement(_Parser);
 
-            ElseStatements = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+            ElseStatements    = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
             ElseStatements[0] = ElseIf;
-            ElseCount = 1;
+            ElseCount         = 1;
         } else {
             ASTStatement *ElseBlock = ParseBlock(_Parser);
 
             ElseStatements = ElseBlock -> Block.Statements;
-            ElseCount = ElseBlock -> Block.Count;
+            ElseCount      = ElseBlock -> Block.Count;
         }
     }
 
@@ -978,7 +986,7 @@ ASTStatement *ParseForStatement(Parser *_Parser) {
     Expect(_Parser, TOKEN_COMMA, "','");
 
     ASTExpression *StepLHS = ParseExpression(_Parser);
-    ASTExpression *Step = ParseExpression(_Parser);
+    ASTExpression *Step;
 
     if (ParserMatch(_Parser, TOKEN_PLUS_EQUAL) || ParserMatch(_Parser, TOKEN_MINUS_EQUAL)) {
         TokenType OpToken = ParserPrevious(_Parser) -> Type;
@@ -1496,6 +1504,55 @@ ASTStatement *ParseStatement(Parser *_Parser) {
         return String;
     }
 
+    if (ParserCheck(_Parser, TOKEN_IDENTIFIER) && ParserCheckNext(_Parser, TOKEN_COLON)) {
+        Token *NameToken = ParserAdvance(_Parser);
+
+        ParserAdvance(_Parser);
+
+        ASTType *Type = ParseType(_Parser);
+
+        ASTExpression *Initialization = NULL;
+        if (ParserMatch(_Parser, TOKEN_EQUAL))
+            Initialization = ParseExpression(_Parser);
+
+        ASTStatement *Declaration = NewStatement(STMT_VAR_DECL);
+        
+        Declaration -> VariableDeclaration.Name = XStrndup(NameToken -> Start, NameToken -> Length);
+        Declaration -> VariableDeclaration.Type = Type;
+        Declaration -> VariableDeclaration.Initializer = Initialization;
+        Declaration -> VariableDeclaration.Modifiers  = MOD_NONE;
+
+        TraceExit("ParseStatement", _Parser);
+
+        return Declaration;
+    }
+
+    if (ParserCheck(_Parser, TOKEN_IDENTIFIER) &&
+        ParserCheckNext(_Parser, TOKEN_IDENTIFIER)) {
+
+        Token *TypeTok = ParserAdvance(_Parser);
+        Token *NameToken = ParserAdvance(_Parser);
+
+        ASTExpression *Initialization = NULL;
+        if (ParserMatch(_Parser, TOKEN_EQUAL))
+            Initialization = ParseExpression(_Parser);
+
+        ASTType *Type = NewType(TYPE_NAMED);
+
+        Type -> Name = XStrndup(TypeTok -> Start, TypeTok -> Length);
+
+        ASTStatement *Declaration = NewStatement(STMT_VAR_DECL);
+
+        Declaration -> VariableDeclaration.Name = XStrndup(NameToken -> Start, NameToken -> Length);
+        Declaration -> VariableDeclaration.Type = Type;
+        Declaration -> VariableDeclaration.Initializer = Initialization;
+        Declaration -> VariableDeclaration.Modifiers  = MOD_NONE;
+
+        TraceExit("ParseStatement", _Parser);
+
+        return Declaration;
+    }
+
     if (ParserMatch(_Parser, TOKEN_IDENTIFIER)) {
         Token *Previous = ParserPrevious(_Parser);
 
@@ -1506,12 +1563,73 @@ ASTStatement *ParseStatement(Parser *_Parser) {
 
             return String;
         }
-        
-        ASTExpression *Indentifier = NewExpression(EXPR_IDENTIFIER);
 
-        Indentifier -> Identifier = XStrndup(Previous -> Start, Previous -> Length);
+        ASTExpression *Expression = NewExpression(EXPR_IDENTIFIER);
 
-        ASTExpression *Expression = ParseBinaryFromLeft(_Parser, Indentifier, 0);
+        Expression -> Identifier = XStrndup(Previous -> Start, Previous -> Length);
+
+        for (;;) {
+            if (ParserMatch(_Parser, TOKEN_LPAREN)) {
+                Expression = ParseCallOrAccess(_Parser, Expression);
+            } else if (ParserMatch(_Parser, TOKEN_LBRACKET)) {
+                ASTExpression *Index = ParseExpression(_Parser);
+
+                Expect(_Parser, TOKEN_RBRACKET, "']'");
+
+                ASTExpression *IndexExpression = NewExpression(EXPR_INDEX);
+
+                IndexExpression -> Index.Target = Expression;
+                IndexExpression -> Index.Index  = Index;
+
+                Expression = IndexExpression;
+            } else if (ParserMatch(_Parser, TOKEN_DOT)) {
+                Token *Member = Expect(_Parser, TOKEN_IDENTIFIER, "member name");
+                ASTExpression *MemberExpression = NewExpression(EXPR_IDENTIFIER);
+
+                MemberExpression -> Identifier = XStrndup(Member -> Start, Member -> Length);
+
+                ASTExpression *BinaryExpression = NewExpression(EXPR_BINARY);
+
+                BinaryExpression -> Binary.Left = Expression;
+                BinaryExpression -> Binary.Right = MemberExpression;
+                BinaryExpression -> Binary.Op = OP_ADD;
+                BinaryExpression -> Metadata.IsLValue  = 1;
+
+                Expression = BinaryExpression;
+            } else if (ParserMatch(_Parser, TOKEN_AT)) {
+                Token *Index = Expect(_Parser, TOKEN_INT_LITERAL, "history index");
+                ASTExpression *IndexLiteral = NewExpression(EXPR_LITERAL);
+
+                IndexLiteral -> Literal.LiteralKind = TYPE_INT;
+                IndexLiteral -> Literal.Int = Index -> Literal.Int;
+
+                if (ParserCheck(_Parser, TOKEN_IDENTIFIER)) {
+                    Token *Br = _Parser -> Current;
+
+                    if (Br -> Length >= 2 && Br -> Start[0] == 'b')
+                        ParserAdvance(_Parser);
+                }
+
+                ASTExpression *IndexExpression = NewExpression(EXPR_INDEX);
+
+                IndexExpression -> Index.Target = Expression;
+                IndexExpression -> Index.Index = IndexLiteral;
+                IndexExpression -> Metadata.OwnershipState = 1;
+
+                Expression = IndexExpression;
+            } else if (ParserMatch(_Parser, TOKEN_DOT_DOT)) {
+                ASTExpression *OwnershipExpression = NewExpression(EXPR_OWNERSHIP);
+
+                OwnershipExpression -> Ownership.Kind   = OWN_TRAIL;
+                OwnershipExpression -> Ownership.Target = Expression;
+
+                Expression = OwnershipExpression;
+            } else {
+                break;
+            }
+        }
+
+        Expression = ParseBinaryFromLeft(_Parser, Expression, 0);
 
         if (ParserMatch(_Parser, TOKEN_EQUAL) || ParserMatch(_Parser, TOKEN_PLUS_EQUAL) || ParserMatch(_Parser, TOKEN_MINUS_EQUAL)) {
             TokenType OpToken = ParserPrevious(_Parser) -> Type;
@@ -1520,7 +1638,7 @@ ASTStatement *ParseStatement(Parser *_Parser) {
             if (OpToken != TOKEN_EQUAL) {
                 ASTExpression *Compound = NewExpression(EXPR_BINARY);
 
-                Compound -> Binary.Left = Expression;
+                Compound -> Binary.Left  = Expression;
                 Compound -> Binary.Right = RHS;
                 Compound -> Binary.Op = (OpToken == TOKEN_PLUS_EQUAL) ? OP_ADD : OP_SUB;
 
@@ -1530,7 +1648,7 @@ ASTStatement *ParseStatement(Parser *_Parser) {
             ASTStatement *String = NewStatement(STMT_ASSIGN);
 
             String -> Assign.Target = Expression;
-            String -> Assign.Value = RHS;
+            String -> Assign.Value  = RHS;
 
             ParserMatch(_Parser, TOKEN_SEMICOLON);
             TraceExit("ParseStatement", _Parser);
@@ -1599,16 +1717,16 @@ ASTSubprogram *ParseSubprogram(Parser *_Parser) {
 
     while (!ParserCheck(_Parser, TOKEN_RPAREN) && !ParserCheck(_Parser, TOKEN_EOF)) {
         ASTParam Parameter = {0};
+        
+        Token *ParameterToken = Expect(_Parser, TOKEN_IDENTIFIER, "parameter name");
 
-        if (ParserMatch(_Parser, TOKEN_NOALIAS)) {}
+        Parameter.Name = XStrndup(ParameterToken -> Start, ParameterToken -> Length);
 
-        Token *ParemeterToken = Expect(_Parser, TOKEN_IDENTIFIER, "parameter name");
-
-        Parameter.Name = XStrndup(ParemeterToken -> Start, ParemeterToken -> Length);
-
-        Expect(_Parser, TOKEN_COLON, "':'");
-
-        Parameter.Type = ParseType(_Parser);
+        if (ParserMatch(_Parser, TOKEN_COLON)) {
+            Parameter.Type = ParseType(_Parser);
+        } else {
+            Parameter.Type = NULL;
+        }
 
         if (ParameterCount >= ParameterCap) {
             ParameterCap *= 2;
@@ -1871,12 +1989,11 @@ static void ParseEnvironmentDeclaration(Parser *_Parser, ASTProgram *Program) {
 }
 
 static void ParseUsing(Parser *_Parser, ASTProgram *Program) {
-    while (!ParserCheck(_Parser, TOKEN_EOF) && !ParserCheck(_Parser, TOKEN_NEWLINE) && !ParserCheck(_Parser, TOKEN_SEMICOLON)) {
+    while (ParserCheck(_Parser, TOKEN_IDENTIFIER) || ParserCheck(_Parser, TOKEN_DOUBLE_COLON)) {
         ParserAdvance(_Parser);
     }
 
     ParserMatch(_Parser, TOKEN_SEMICOLON);
-    ParserMatch(_Parser, TOKEN_NEWLINE);
 }
 
 static void ParseSysDecl(Parser *_Parser, ASTProgram *Program) {
