@@ -897,6 +897,19 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
     ASTStatement **ElseStatements = NULL;
     size_t ElseCount = 0;
 
+    if (ParserCheck(_Parser, TOKEN_LBRACE)) {
+        ASTStatement *Then = ParseBlock(_Parser);
+
+        ThenStmts = Then -> Block.Statements;
+        ThenCount  = Then -> Block.Count;
+    } else {
+        ASTStatement *Single = ParseStatement(_Parser);
+
+        ThenStmts = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+        ThenStmts[0] = Single;
+        ThenCount = 1;
+    }
+
     if (ParserMatch(_Parser, TOKEN_ELSE)) {
         if (ParserCheck(_Parser, TOKEN_IF)) {
             ParserAdvance(_Parser);
@@ -905,7 +918,6 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
 
             ElseStatements = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
             ElseStatements[0] = ElseIf;
-
             ElseCount = 1;
         } else {
             ASTStatement *ElseBlock = ParseBlock(_Parser);
@@ -965,7 +977,22 @@ ASTStatement *ParseForStatement(Parser *_Parser) {
 
     Expect(_Parser, TOKEN_COMMA, "','");
 
+    ASTExpression *StepLHS = ParseExpression(_Parser);
     ASTExpression *Step = ParseExpression(_Parser);
+
+    if (ParserMatch(_Parser, TOKEN_PLUS_EQUAL) || ParserMatch(_Parser, TOKEN_MINUS_EQUAL)) {
+        TokenType OpToken = ParserPrevious(_Parser) -> Type;
+        ASTExpression *RHS = ParseExpression(_Parser);
+        ASTExpression *Compound = NewExpression(EXPR_BINARY);
+
+        Compound -> Binary.Left  = StepLHS;
+        Compound -> Binary.Right = RHS;
+        Compound -> Binary.Op = (OpToken == TOKEN_PLUS_EQUAL) ? OP_ADD : OP_SUB;
+
+        Step = Compound;
+    } else {
+        Step = StepLHS;
+    }
 
     _Parser -> InLoop++;
 
@@ -1522,6 +1549,18 @@ ASTStatement *ParseStatement(Parser *_Parser) {
         return String;
     }
 
+    if (ParserMatch(_Parser, TOKEN_FUNCTION)) {
+        ParseSubprogram(_Parser);
+
+        ASTStatement *Stub = NewStatement(STMT_EXPR);
+
+        Stub -> Expression.Expression = NewExpression(EXPR_LITERAL);
+
+        TraceExit("ParseStatement", _Parser);
+
+        return Stub;
+    }
+
     if (ParserMatch(_Parser, TOKEN_WITH)) {
         ASTStatement *String = ParseWithBlock(_Parser);
 
@@ -1682,25 +1721,31 @@ static void ParsePartialDeclaration(Parser *_Parser, ASTProgram *Program) {
     ParseStructDecl(_Parser, Program);
 }
 
-static void ParseModuleDeclaration(Parser *_Parser, ASTProgram *Program) {
-    Expect(_Parser, TOKEN_IDENTIFIER, "module name");
-
-    ASTStatement *Body = ParseBlock(_Parser);
-
-    (void) Body;
-}
-
 static void ParseWorldDeclaration(Parser *_Parser, ASTProgram *Program) {
     Expect(_Parser, TOKEN_IDENTIFIER, "world name");
 
-    if (ParserMatch(_Parser, TOKEN_EXTENDS) || ParserMatch(_Parser, TOKEN_ENV)) {
+    if (ParserMatch(_Parser, TOKEN_EXTENDS)) {
         Expect(_Parser, TOKEN_IDENTIFIER, "base world name");
     }
 
     Expect(_Parser, TOKEN_LBRACE, "'{'");
 
     while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
-        ParseStatement(_Parser);
+        if (ParserMatch(_Parser, TOKEN_FUNCTION)) {
+            ASTSubprogram *Subprogram = ParseSubprogram(_Parser);
+
+            Program -> SubprogramCount++;
+            Program -> Subprograms = (ASTSubprogram **) realloc(Program -> Subprograms, sizeof(ASTSubprogram *) * Program -> SubprogramCount);
+            Program -> Subprograms[Program -> SubprogramCount - 1] = Subprogram;
+        } else {
+            ASTStatement *String = ParseStatement(_Parser);
+
+            if (String) {
+                Program -> StatementCount++;
+                Program -> Statements = (ASTStatement **) realloc(Program -> Statements, sizeof(ASTStatement *) * Program -> StatementCount);
+                Program -> Statements[Program -> StatementCount - 1] = String;
+            }
+        }
     }
 
     Expect(_Parser, TOKEN_RBRACE, "'}'");
@@ -1708,7 +1753,54 @@ static void ParseWorldDeclaration(Parser *_Parser, ASTProgram *Program) {
 
 static void ParseContextDeclaration(Parser *_Parser, ASTProgram *Program) {
     Expect(_Parser, TOKEN_IDENTIFIER, "context name");
-    ParseBlock(_Parser);
+    Expect(_Parser, TOKEN_LBRACE, "'{'");
+
+    while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
+        if (ParserMatch(_Parser, TOKEN_FUNCTION)) {
+            ASTSubprogram *Subprogram = ParseSubprogram(_Parser);
+
+            Program -> SubprogramCount++;
+            Program -> Subprograms = (ASTSubprogram **) realloc(Program -> Subprograms, sizeof(ASTSubprogram *) * Program -> SubprogramCount);
+            Program -> Subprograms[Program -> SubprogramCount - 1] = Subprogram;
+        } else {
+            ASTStatement *String = ParseStatement(_Parser);
+
+            if (String) {
+                Program -> StatementCount++;
+                Program -> Statements = (ASTStatement **) realloc(Program -> Statements, sizeof(ASTStatement *) * Program -> StatementCount);
+                Program -> Statements[Program -> StatementCount - 1] = String;
+            }
+        }
+    }
+
+    Expect(_Parser, TOKEN_RBRACE, "'}'");
+}
+
+static void ParseModuleDeclaration(Parser *_Parser, ASTProgram *Program) {
+    Expect(_Parser, TOKEN_IDENTIFIER, "module name");
+    Expect(_Parser, TOKEN_LBRACE, "'{'");
+
+    while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
+        if (ParserMatch(_Parser, TOKEN_FUNCTION) || ParserMatch(_Parser, TOKEN_EXPORT)) {
+            ParserMatch(_Parser, TOKEN_FUNCTION);
+
+            ASTSubprogram *Subprogram = ParseSubprogram(_Parser);
+
+            Program -> SubprogramCount++;
+            Program -> Subprograms = (ASTSubprogram **) realloc(Program -> Subprograms, sizeof(ASTSubprogram *) * Program -> SubprogramCount);
+            Program -> Subprograms[Program -> SubprogramCount - 1] = Subprogram;
+        } else {
+            ASTStatement *String = ParseStatement(_Parser);
+
+            if (String) {
+                Program -> StatementCount++;
+                Program -> Statements = (ASTStatement **) realloc(Program -> Statements, sizeof(ASTStatement *) * Program -> StatementCount);
+                Program -> Statements[Program -> StatementCount - 1] = String;
+            }
+        }
+    }
+
+    Expect(_Parser, TOKEN_RBRACE, "'}'");
 }
 
 static void ParseMacroDeclaration(Parser *_Parser, ASTProgram *Program) {
