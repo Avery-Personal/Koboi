@@ -836,17 +836,17 @@ Token LexerNextToken(Lexer *_Lexer) {
 
     Token Current = _Token;
 
-    //if (LastToken.Type == TOKEN_EQUAL && _Token.Type == TOKEN_EQUAL) {
-    //    LexerReport(_Lexer, DIAG_ERROR, "unexpected '=' after '='", "did you mean '=='?");
-    //}
+    if (LastToken.Type == TOKEN_EQUAL && _Token.Type == TOKEN_EQUAL) {
+        LexerReport(_Lexer, DIAG_ERROR, "unexpected '=' after '='", "did you mean '=='?");
+    }
 
-    //if (LastToken.Type == TOKEN_FUNCTION && _Token.Type == TOKEN_FUNCTION) {
-    //    LexerReport(_Lexer, DIAG_ERROR, "duplicate 'fn' keyword", "remove redundant keyword");
-    //}
+    if (LastToken.Type == TOKEN_FUNCTION && _Token.Type == TOKEN_FUNCTION) {
+        LexerReport(_Lexer, DIAG_ERROR, "duplicate 'fn' keyword", "remove redundant keyword");
+    }
 
-    //if (IsAlphanumeric(LexerPeek(_Lexer))) {
-    //    LexerReport(_Lexer, DIAG_ERROR, "invalid numeric literal", "identifiers cannot start with a number");
-    //}
+    if (IsAlphanumeric(LexerPeek(_Lexer))) {
+        LexerReport(_Lexer, DIAG_ERROR, "invalid numeric literal", "identifiers cannot start with a number");
+    }
 
     Current.TokenIndex = _Lexer -> Cursor;
 

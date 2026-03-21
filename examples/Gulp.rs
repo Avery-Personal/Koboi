@@ -51,7 +51,7 @@ fn main() provides env ID = 1 { .. }
 
 An environment can only be used via its scope providing it, so in the usage case of lets say I try doing:
 
-fn InitializeEnvironments() provides env Filesystem provides env ID = 1 {return}
+fn InitializeEnvironments() provides env filesystem provides env ID = 1 {return}
 
 Syntactically it would work as it's providing the environment, but due to the context, it wouldn't work outside of the scope.
 
@@ -67,13 +67,13 @@ fn main() provides env ID = 1 {
 
 IDLog would get the environment's data, the ID, of 1, as that's the scope that used the environment that called the function requiring it.
 
-With these use cases, an environment can be in the usage of permission or data, I.E having an environment, lets say Filesystem, and we want to have a delete function, we can make a safety for it via:
+With these use cases, an environment can be in the usage of permission or data, I.E having an environment, lets say filesystem, and we want to have a delete function, we can make a safety for it via:
 
-fn DeleteFile(Path : String) requires env Filesystem {
+fn DeleteFile(Path : String) requires env filesystem {
     DeleteFunction( ... )
 }
 
-If we do a non-environmented call of DeleteFile, lets say main, not providing Filesystem, then the program would result in a compile-time error.
+If we do a non-environmented call of DeleteFile, lets say main, not providing filesystem, then the program would result in a compile-time error.
 
 To create information in environments, it's similar usage of macros in Koboi, after defining the environment, in said case, ID, we can use braces to form a body, env ID {}.
 After creating a body, we're able to allow for simple data such as variable & basic functions; functions are NOT able to use advanced types, I.E unsafe functions.
@@ -398,11 +398,11 @@ compiletime fn factorial(n: int) {
     return n * factorial(n - 1)
 }
 
-fn GetFile() requires env Filesystem {
+fn GetFile() requires env filesystem {
     return OpenFile("a.txt")
 }
 
-fn main() provides env Filesystem {
+fn main() provides env filesystem {
     FILE : File = GetFile()
     
     Sum = Add(3, 7)
