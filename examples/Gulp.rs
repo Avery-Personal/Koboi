@@ -473,7 +473,7 @@ world C extends B {
     pln(k) // 2
 }
 
-// Language implementation (Rebekah, Naomi, & Avi-Assembyl)
+// Language implementation (Naomi [Dialect of Assembly])
 nao {
     reg r1
     reg r2
