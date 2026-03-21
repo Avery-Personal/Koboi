@@ -1,9 +1,10 @@
 name: Release Executables
 
 on:
-  push:
-    tags:
-      - '*'
+  workflow_run:
+    workflows: ["Auto Tag"]
+    types:
+      - completed
 
 jobs:
   build:
@@ -14,6 +15,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: tag
+        run: |
+          tag=$(git tag --sort=-v:refname | head -n 1)
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "Latest tag: $tag"
 
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -26,7 +36,6 @@ jobs:
             gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi.exe
           else
             gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi
-          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -44,11 +53,17 @@ jobs:
         with:
           path: artifacts
 
+      - name: Get latest tag
+        id: tag
+        run: |
+          tag=$(git tag --sort=-v:refname | head -n 1)
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: |
             artifacts/Koboi-ubuntu-latest/Koboi
             artifacts/Koboi-windows-latest/Koboi.exe
