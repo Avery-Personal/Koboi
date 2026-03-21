@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/download-artifact@v4
+      uses: actions/checkout@v4
 
     - name: Download artifacts
       uses: actions/download-artifact@v4
