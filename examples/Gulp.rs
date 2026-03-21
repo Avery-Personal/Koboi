@@ -33,7 +33,7 @@ struct User {
     Age : int
 }
 
-// Partial initialization allowing for handling incomplete data safely
+// Partial initialization allowing for handling incomplete data safely (Specific values can be used for ownership)
 partial UserSafe {
     Name : String
     Age : int
@@ -123,20 +123,43 @@ b4 = "Hello, World!" // Error, usage of trailing owner a4
 a5 = "Hello, World!"
 b5 = #a5 // # Uses the DIRECT memory address of a5, followed up by any ownership symbol wanted; allows for mutable borrowing.
 
+a6 = "Hello, World!"
+b6 = &a6
+
+$b6 // Frees a variable using the value of another via ownership, retains last stated value.
+
+a7 = "Hello, World!"
+b7 = !$a7 // Usage of '$', the free operator, during assignment allows for optionality of MUTABLE ownership, meaning that you can change the value of the value using ownership; can be used on top of other operators, similar to '#'.
+// '!' before '$' allows for explicit freeing (You must do $VAR_NAME); needed if wanting change in ownership (VAR1 = !$&VAR2 | $VAR1 | VAR1 = VAR2..)
+
+partial Info {
+    Name : String,
+    Age : int
+}
+
+Person = Info { Name : "Averi", Age : 10 }
+
+Name = Person.Name // Moves name of partial
+
+pln(Person.Age) // 10
+pln(Person.Name) // Error
+
+pln(Name) // Averi
+
 // Allows for memory to be shared in a region, after region closes all memory is automatically freed.
 region Memory {
-    a6 = "Hello, World!"
-    b6 = &a6
+    a7 = "Hello, World!"
+    b7 = &a7
 }
 
 a7 = 0
 b7 = 0
 
 transaction {
-    a7 += 1
-    b7 += 2
+    a8 += 1
+    b8 += 2
 
-    if b7 < a7 {
+    if b8 < a8 {
         rollback
     }
 }
