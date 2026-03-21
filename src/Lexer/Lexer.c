@@ -191,12 +191,15 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
         case 'r':
             if (Len == 6 && memcmp(Start, "return", 6) == 0) return TOKEN_RETURN;
             if (Len == 8 && memcmp(Start, "requires", 8) == 0) return TOKEN_REQUIRES;
+            if (Len == 8 && memcmp(Start, "rollback", 8) == 0) return TOKEN_ROLLBACK;
+            if (Len == 6 && memcmp(Start, "region", 6) == 0) return TOKEN_REGION;
 
             break;
 
         case 'p':
             if (Len == 8 && memcmp(Start, "provides", 8) == 0) return TOKEN_PROVIDES;
             if (Len == 7 && memcmp(Start, "private", 7) == 0) return TOKEN_PRIVATE;
+            if (Len == 7 && memcmp(Start, "partial", 7) == 0) return TOKEN_PARTIAL;
 
             break;
 
@@ -205,6 +208,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
             if (Len == 4 && memcmp(Start, "enum", 4) == 0) return TOKEN_ENUM;
             if (Len == 6 && memcmp(Start, "export", 6) == 0) return TOKEN_EXPORT;
             if (Len == 3 && memcmp(Start, "env", 3) == 0) return TOKEN_ENV;
+            if (Len == 7 && memcmp(Start, "extends", 7) == 0) return TOKEN_ENV;
 
             break;
 
@@ -217,13 +221,17 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
         case 's':
             if (Len == 6 && memcmp(Start, "static", 6) == 0) return TOKEN_STATIC;
             if (Len == 6 && memcmp(Start, "silent", 6) == 0) return TOKEN_SILENT;
+            if (Len == 8 && memcmp(Start, "symbolic", 8) == 0) return TOKEN_SYMBOLIC;
             if (Len == 3 && memcmp(Start, "sys", 3) == 0) return TOKEN_SYS;
             if (Len == 4 && memcmp(Start, "safe", 4) == 0) return TOKEN_SAFE;
+            if (Len == 5 && memcmp(Start, "state", 5) == 0) return TOKEN_STATE;
+            if (Len == 5 && memcmp(Start, "struct", 5) == 0) return TOKEN_STRUCT;
 
             break;
 
         case 'u':
             if (Len == 6 && memcmp(Start, "unsafe", 6) == 0) return TOKEN_UNSAFE;
+            if (Len == 5 && memcmp(Start, "using", 5) == 0) return TOKEN_USING;
 
             break;
 
@@ -235,6 +243,8 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
         case 'c':
             if (Len == 5 && memcmp(Start, "const", 5) == 0) return TOKEN_CONST;
             if (Len == 5 && memcmp(Start, "check", 5) == 0) return TOKEN_CHECK;
+            if (Len == 7 && memcmp(Start, "context", 7) == 0) return TOKEN_CONTEXT;
+            if (Len == 11 && memcmp(Start, "compiletime", 11) == 0) return TOKEN_COMPTIME;
 
             break;
 
@@ -272,6 +282,22 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
 
         case 'g':
             if (Len == 6 && memcmp(Start, "global", 6) == 0) return TOKEN_GLOBAL;
+
+            break;
+
+        case 'w':
+            if (Len == 5 && memcmp(Start, "world", 5) == 0) return TOKEN_WORLD;
+            if (Len == 4 && memcmp(Start, "with", 4) == 0) return TOKEN_WITH;
+
+            break;
+
+        case 'l':
+            if (Len == 6 && memcmp(Start, "linear", 6) == 0) return TOKEN_LINEAR;
+
+            break;
+
+        case 'h':
+            if (Len == 7 && memcmp(Start, "history", 7) == 0) return TOKEN_HISTORY;
 
             break;
     }
@@ -357,7 +383,7 @@ static void LexerErrorAt(Lexer *_Lexer, const char *Message) {
 }
 
 static void LexingError(Lexer *_Lexer) {
-    fprintf(stderr, "[Lexer Error] Line %u:%u >> %s\n", _Lexer -> Error.Line, _Lexer -> Error.Column, _Lexer -> Error.Message);
+    fprintf(stderr, "[Lexer Error] Line %u:%u >> %s\n", _Lexer -> Error.Line, _Lexer -> Error.Column - 1, _Lexer -> Error.Message);
 }
 
 Token LexerNextToken(Lexer *_Lexer) {
@@ -519,6 +545,7 @@ Token LexerNextToken(Lexer *_Lexer) {
 
                 break;
 
+            case '*': _Token.Type = TOKEN_STAR; break;
             case '=':
                 if (LexerPeek(_Lexer) == '=') {
                     LexerNext(_Lexer);
@@ -549,7 +576,7 @@ Token LexerNextToken(Lexer *_Lexer) {
                 } else if (LexerPeek(_Lexer) == '>') {
                     LexerNext(_Lexer);
 
-                    _Token.Type = TOKEN_ARROW;
+                    _Token.Type = TOKEN_MATCH_ARROW;
                 } else {
                     _Token.Type = TOKEN_GT;
                 }
@@ -589,6 +616,7 @@ Token LexerNextToken(Lexer *_Lexer) {
 
                 break;
 
+            case '$': _Token.Type = TOKEN_DOLLAR; break;
             case '&': _Token.Type = TOKEN_AMPERSAND; break;
             case '@': _Token.Type = TOKEN_AT; break;
             case '#': _Token.Type = TOKEN_HASH; break;
@@ -598,6 +626,7 @@ Token LexerNextToken(Lexer *_Lexer) {
             case '}': _Token.Type = TOKEN_RBRACE; break;
             case '[': _Token.Type = TOKEN_LBRACKET; break;
             case ']': _Token.Type = TOKEN_RBRACKET; break;
+            case '^': _Token.Type = TOKEN_ARROW; break;
             case ',': _Token.Type = TOKEN_COMMA; break;
             case ';': _Token.Type = TOKEN_SEMICOLON; break;
 
@@ -634,7 +663,8 @@ TokenStream Tokenize(Lexer *_Lexer) {
             _TokenStream.Data = realloc(_TokenStream.Data, sizeof(Token) * _TokenStream.Capacity);
         }
 
-        // DEBUGGING USE | printf("[Lexer] Line %i:%i | %s | Symbol: %.*s\n", _Lexer -> Line, _Lexer -> Column, TokenTypeToString(_Token.Type), _Token.Length, _Token.Start ? _Token.Start : "");
+        if (_Token.Type == TOKEN_IDENTIFIER && _Token.Length > 3)
+            printf("[Lexer] Line %i:%i | %s | Symbol: %.*s\n", _Lexer -> Line, _Lexer -> Column, TokenTypeToString(_Token.Type), _Token.Length, _Token.Start ? _Token.Start : "");
 
         _TokenStream.Data[_TokenStream.Count++] = _Token;
 
