@@ -55,6 +55,7 @@ typedef enum {
     TOKEN_MACRO,
     TOKEN_EXPOSE,
     TOKEN_NOALIAS,
+    TOKEN_REGION,
 
     TOKEN_EQUAL,
     TOKEN_PLUS_EQUAL,
