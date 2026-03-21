@@ -583,6 +583,58 @@ ASTExpression *ParsePostfix(Parser *_Parser) {
     ASTExpression *Expression = ParsePrimary(_Parser);
 
     for (;;) {
+        if (ParserCheck(_Parser, TOKEN_LBRACE) &&
+            Expression -> Kind == EXPR_IDENTIFIER) {
+
+            Token *LookAhead1 = PeekNext(_Parser);
+            
+            TokenStream *Tokens = _Parser -> Tokens;
+            size_t SavedCursor = Tokens -> Cursor;
+
+            Token *Inside = (Tokens -> Cursor + 1 < Tokens -> Count) ? &Tokens -> Data[Tokens -> Cursor + 1] : &Tokens -> Data[Tokens -> Count - 1];
+            Token *AfterInside = (Tokens -> Cursor + 2 < Tokens -> Count) ? &Tokens -> Data[Tokens -> Cursor + 2] : &Tokens -> Data[Tokens -> Count - 1];
+
+            int IsStructInit = (Inside -> Type == TOKEN_IDENTIFIER && AfterInside -> Type == TOKEN_COLON);
+            if (IsStructInit) {
+                ParserAdvance(_Parser);
+                
+                size_t Cap = 8, Count = 0;
+
+                ASTExpression **Fields = (ASTExpression **) XMalloc(sizeof(ASTExpression *) * Cap);
+
+                while (!ParserCheck(_Parser, TOKEN_RBRACE) &&
+                       !ParserCheck(_Parser, TOKEN_EOF)) {
+
+                    if (ParserCheck(_Parser, TOKEN_IDENTIFIER))
+                        ParserAdvance(_Parser);
+
+                    ParserMatch(_Parser, TOKEN_COLON);
+
+                    if (Count >= Cap) {
+                        Cap *= 2;
+
+                        Fields = (ASTExpression **) realloc(Fields, sizeof(ASTExpression *) * Cap);
+                    }
+
+                    Fields[Count++] = ParseExpression(_Parser);
+
+                    if (!ParserMatch(_Parser, TOKEN_COMMA)) break;
+                }
+
+                Expect(_Parser, TOKEN_RBRACE, "'}'");
+
+                ASTExpression *Call = NewExpression(EXPR_CALL);
+
+                Call -> Call.Callee = Expression;
+                Call -> Call.Arguments = Fields;
+                Call -> Call.ArgumentCount = Count;
+
+                Expression = Call;
+
+                continue;
+            }
+        }
+
         if (ParserMatch(_Parser, TOKEN_LPAREN)) {
             Expression = ParseCallOrAccess(_Parser, Expression);
         } else if (ParserMatch(_Parser, TOKEN_LBRACKET)) {
@@ -590,12 +642,12 @@ ASTExpression *ParsePostfix(Parser *_Parser) {
 
             Expect(_Parser, TOKEN_RBRACKET, "']'");
 
-            ASTExpression *IndexExpresison = NewExpression(EXPR_INDEX);
+            ASTExpression *IndexExpression = NewExpression(EXPR_INDEX);
 
-            IndexExpresison -> Index.Target = Expression;
-            IndexExpresison -> Index.Index = Index;
+            IndexExpression -> Index.Target = Expression;
+            IndexExpression -> Index.Index  = Index;
 
-            Expression = IndexExpresison;
+            Expression = IndexExpression;
         } else if (ParserMatch(_Parser, TOKEN_DOT)) {
             Token *Member = Expect(_Parser, TOKEN_IDENTIFIER, "member name");
             ASTExpression *MemberExpression = NewExpression(EXPR_IDENTIFIER);
@@ -612,27 +664,25 @@ ASTExpression *ParsePostfix(Parser *_Parser) {
 
             Expression = BinaryExpression;
         } else if (ParserMatch(_Parser, TOKEN_AT)) {
-            Token *Indez = Expect(_Parser, TOKEN_INT_LITERAL, "history index");
-            ASTExpression *IndexExpresisonLiteral = NewExpression(EXPR_LITERAL);
+            Token *Index = Expect(_Parser, TOKEN_INT_LITERAL, "history index");
+            ASTExpression *IndexLiteral = NewExpression(EXPR_LITERAL);
 
-            IndexExpresisonLiteral -> Literal.LiteralKind = TYPE_INT;
-            IndexExpresisonLiteral -> Literal.Int = Indez -> Literal.Int;
+            IndexLiteral -> Literal.LiteralKind = TYPE_INT;
+            IndexLiteral -> Literal.Int = Index -> Literal.Int;
 
             if (ParserCheck(_Parser, TOKEN_IDENTIFIER)) {
                 Token *Branch = _Parser -> Current;
-
-                if (Branch -> Length >= 2 && Branch -> Start[0] == 'b') {
+                if (Branch -> Length >= 2 && Branch -> Start[0] == 'b')
                     ParserAdvance(_Parser);
-                }
             }
 
-            ASTExpression *IndexExpresison = NewExpression(EXPR_INDEX);
+            ASTExpression *IndexExpression = NewExpression(EXPR_INDEX);
 
-            IndexExpresison -> Index.Target = Expression;
-            IndexExpresison -> Index.Index = IndexExpresison;
-            IndexExpresison -> Metadata.OwnershipState = 1;
+            IndexExpression -> Index.Target = Expression;
+            IndexExpression -> Index.Index = IndexLiteral;
+            IndexExpression -> Metadata.OwnershipState = 1;
 
-            Expression = IndexExpresison;
+            Expression = IndexExpression;
         } else if (ParserMatch(_Parser, TOKEN_DOT_DOT)) {
             ASTExpression *OwnershipExpression = NewExpression(EXPR_OWNERSHIP);
 
@@ -850,7 +900,13 @@ static uint32_t ParseModifiers(Parser *_Parser) {
             Mods |= MOD_PRIVATE;
         else if (ParserMatch(_Parser, TOKEN_SILENT))
             Mods |= MOD_SILENT;
-        else break;
+        else if (ParserMatch(_Parser, TOKEN_LINEAR)) {
+            Mods |= MOD_LINER;
+        } else if (ParserMatch(_Parser, TOKEN_HISTORY)) {
+            Mods |= MOD_HISTORY;
+        } else if (ParserMatch(_Parser, TOKEN_SYMBOLIC)) {
+            Mods |= MOD_SYMBOLIC;
+        } else break;
     }
 
     return Mods;

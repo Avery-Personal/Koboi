@@ -35,6 +35,9 @@
         MOD_EXPORT = 1 << 3,
         MOD_PRIVATE = 1 << 4,
         MOD_SILENT = 1 << 5,
+        MOD_LINER = 1 << 6,
+        MOD_HISTORY = 1 << 7,
+        MOD_SYMBOLIC = 1 << 8,
     } ASTModifiers;
 
     typedef enum {
