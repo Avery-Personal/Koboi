@@ -74,8 +74,8 @@ jobs:
           name: Release ${{ steps.tag.outputs.tag }}
           tag_name: ${{ steps.tag.outputs.tag }}
           files: |
-            artifacts/Koboi-ubuntu-latest/Koboi
-            artifacts/Koboi-windows-latest/Koboi.exe
-            artifacts/Koboi-macos-latest/Koboi
+            artifacts/Koboi-ubuntu-latest/Koboi-Linux
+            artifacts/Koboi-windows-latest/Koboi-Windows.exe
+            artifacts/Koboi-macos-latest/Koboi-MacOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
