@@ -227,7 +227,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
             if (Len == 4 && memcmp(Start, "enum", 4) == 0) return TOKEN_ENUM;
             if (Len == 6 && memcmp(Start, "export", 6) == 0) return TOKEN_EXPORT;
             if (Len == 3 && memcmp(Start, "env", 3) == 0) return TOKEN_ENV;
-            if (Len == 7 && memcmp(Start, "extends", 7) == 0) return TOKEN_ENV;
+            if (Len == 7 && memcmp(Start, "extends", 7) == 0) return TOKEN_EXTENDS;
 
             break;
 
