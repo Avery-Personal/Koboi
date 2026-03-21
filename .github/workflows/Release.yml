@@ -4,10 +4,67 @@ on:
   push:
     branches: [main]
     tags:
-      - 'v*.*.*'
+      - '*'
 
 jobs:
+  auto-tag:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    outputs:
+      tag: ${{ steps.extract.outputs.tag }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commit message
+        id: commit
+        run: |
+          msg=$(git log -1 --pretty=%B)
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$msg" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Extract AVSS version
+        id: extract
+        run: |
+          msg="${{ steps.commit.outputs.message }}"
+          echo "Commit message: $msg"
+
+          # Extract pattern like 1.9s24
+          if [[ $msg =~ ([0-9]+\.[0-9]+[a-zA-Z][0-9]+) ]]; then
+            version="${BASH_REMATCH[1]}"
+            echo "Found version: $version"
+          else
+            echo "No AVSS version found in commit message"
+            exit 1
+          fi
+
+          echo "tag=$version" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        run: |
+          tag="${{ steps.extract.outputs.tag }}"
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          # Prevent duplicate tags
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag already exists, skipping"
+            exit 0
+          fi
+
+          git tag "$tag"
+          git push origin "$tag"
+
   build:
+    needs: auto-tag
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
