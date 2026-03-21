@@ -110,14 +110,23 @@ int IsSyncToken(TokenType Type) {
         case TOKEN_RETURN:
         case TOKEN_MATCH:
         case TOKEN_UNSAFE:
-        case TOKEN_SAFE:
         case TOKEN_TRUSTED:
+        case TOKEN_SAFE:
         case TOKEN_DEFER:
         case TOKEN_CHECK:
         case TOKEN_ASSUME:
         case TOKEN_REGION:
         case TOKEN_TRANSACTION:
         case TOKEN_COMPTIME:
+        case TOKEN_MODULE:
+        case TOKEN_CONTEXT:
+        case TOKEN_WORLD:
+        case TOKEN_ENUM:
+        case TOKEN_STATE:
+        case TOKEN_STRUCT:
+        case TOKEN_PARTIAL:
+        case TOKEN_MACRO:
+        case TOKEN_ENV:
         case TOKEN_EOF: return 1;
 
         default: return 0;
@@ -207,6 +216,17 @@ static Token *PeekNext(Parser *_Parser) {
     if (Next < Tokens -> Count)
         return &Tokens -> Data[Next];
 
+    return &Tokens -> Data[Tokens -> Count - 1];
+}
+
+static Token *PeekNextNext(Parser *_Parser) {
+    TokenStream *Tokens = _Parser -> Tokens;
+
+    size_t Next = Tokens -> Cursor + 2;
+
+    if (Next < Tokens -> Count)
+        return &Tokens -> Data[Next];
+        
     return &Tokens -> Data[Tokens -> Count - 1];
 }
 
@@ -845,14 +865,13 @@ ASTStatement *ParseBlock(Parser *_Parser) {
 
     size_t Cap = 16;
     size_t Count = 0;
+
     ASTStatement **Statements = (ASTStatement **) XMalloc(sizeof(ASTStatement *) * Cap);
 
     while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
         ASTStatement *String = ParseStatement(_Parser);
 
         if (!String) {
-            Synchronise(_Parser);
-
             continue;
         }
 
@@ -897,13 +916,9 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
     TraceEnter("ParseIfStatement", _Parser);
 
     ASTExpression *Condition = ParseExpression(_Parser);
-    ASTStatement *Then = ParseBlock(_Parser);
 
-    size_t ThenCount = Then -> Block.Count;
-    ASTStatement **ThenStmts = Then -> Block.Statements;
-
-    ASTStatement **ElseStatements = NULL;
-    size_t ElseCount = 0;
+    ASTStatement **ThenStmts;
+    size_t ThenCount;
 
     if (ParserCheck(_Parser, TOKEN_LBRACE)) {
         ASTStatement *Then = ParseBlock(_Parser);
@@ -913,10 +928,13 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
     } else {
         ASTStatement *Single = ParseStatement(_Parser);
 
-        ThenStmts    = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+        ThenStmts = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
         ThenStmts[0] = Single;
-        ThenCount    = 1;
+        ThenCount = 1;
     }
+
+    ASTStatement **ElseStatements = NULL;
+    size_t ElseCount = 0;
 
     if (ParserMatch(_Parser, TOKEN_ELSE)) {
         if (ParserCheck(_Parser, TOKEN_IF)) {
@@ -924,14 +942,21 @@ ASTStatement *ParseIfStatement(Parser *_Parser) {
 
             ASTStatement *ElseIf = ParseIfStatement(_Parser);
 
-            ElseStatements    = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+            ElseStatements = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
             ElseStatements[0] = ElseIf;
-            ElseCount         = 1;
-        } else {
+            ElseCount = 1;
+        } else if (ParserCheck(_Parser, TOKEN_LBRACE)) {
             ASTStatement *ElseBlock = ParseBlock(_Parser);
 
             ElseStatements = ElseBlock -> Block.Statements;
-            ElseCount      = ElseBlock -> Block.Count;
+            ElseCount = ElseBlock -> Block.Count;
+        } else {
+            ASTStatement *Single = ParseStatement(_Parser);
+
+            ElseStatements = (ASTStatement **) XMalloc(sizeof(ASTStatement *));
+            ElseStatements[0] = Single;
+
+            ElseCount = 1;
         }
     }
 
@@ -1060,20 +1085,44 @@ static ASTStatement *ParseMatchStatement(Parser *_Parser) {
         ASTMatchArm Arm = {0};
 
         if (ParserCheck(_Parser, TOKEN_LPAREN)) {
-            Arm.Pattern = ParseExpression(_Parser);
+            ParserAdvance(_Parser); 
+
+            size_t ElementCap = 4, ElemCount = 0;
+            ASTExpression **Elements = (ASTExpression **) XMalloc(sizeof(ASTExpression *) * ElementCap);
+
+            while (!ParserCheck(_Parser, TOKEN_RPAREN) && !ParserCheck(_Parser, TOKEN_EOF)) {
+                if (ElemCount >= ElementCap) {
+                    ElementCap *= 2;
+
+                    Elements = (ASTExpression **) realloc(Elements, sizeof(ASTExpression *) * ElementCap);
+                }
+
+                Elements[ElemCount++] = ParseExpression(_Parser);
+
+                if (!ParserMatch(_Parser, TOKEN_COMMA))
+                    break;
+            }
+
+            Expect(_Parser, TOKEN_RPAREN, "')'");
+
+            ASTExpression *Tuple = NewExpression(EXPR_ARRAY);
+
+            Tuple -> Array.Elements = Elements;
+            Tuple -> Array.Count = ElemCount;
+
+            Arm.Pattern = Tuple;
         } else {
             Arm.Pattern = ParseExpression(_Parser);
         }
 
-        if (ParserMatch(_Parser, TOKEN_IF)) {
+        if (ParserMatch(_Parser, TOKEN_IF))
             Arm.Guard = ParseExpression(_Parser);
-        }
 
         Expect(_Parser, TOKEN_MATCH_ARROW, "'>>'");
 
         if (ParserCheck(_Parser, TOKEN_LBRACE)) {
             ASTStatement *Block = ParseBlock(_Parser);
-
+            
             Arm.Body = Block -> Block.Statements;
             Arm.BodyCount = Block -> Block.Count;
         } else {
@@ -1516,7 +1565,7 @@ ASTStatement *ParseStatement(Parser *_Parser) {
             Initialization = ParseExpression(_Parser);
 
         ASTStatement *Declaration = NewStatement(STMT_VAR_DECL);
-        
+
         Declaration -> VariableDeclaration.Name = XStrndup(NameToken -> Start, NameToken -> Length);
         Declaration -> VariableDeclaration.Type = Type;
         Declaration -> VariableDeclaration.Initializer = Initialization;
@@ -1527,30 +1576,32 @@ ASTStatement *ParseStatement(Parser *_Parser) {
         return Declaration;
     }
 
-    if (ParserCheck(_Parser, TOKEN_IDENTIFIER) &&
-        ParserCheckNext(_Parser, TOKEN_IDENTIFIER)) {
+    if (ParserCheck(_Parser, TOKEN_IDENTIFIER) && ParserCheckNext(_Parser, TOKEN_IDENTIFIER)) {
+        Token *Third = PeekNextNext(_Parser);
 
-        Token *TypeTok = ParserAdvance(_Parser);
-        Token *NameToken = ParserAdvance(_Parser);
+        if (Third -> Type == TOKEN_EQUAL || Third -> Type == TOKEN_SEMICOLON || Third -> Type == TOKEN_RBRACE || Third -> Type == TOKEN_EOF) {
+            Token *TypeToken = ParserAdvance(_Parser);
+            Token *NameToken = ParserAdvance(_Parser);
 
-        ASTExpression *Initialization = NULL;
-        if (ParserMatch(_Parser, TOKEN_EQUAL))
-            Initialization = ParseExpression(_Parser);
+            ASTExpression *Initialization = NULL;
+            if (ParserMatch(_Parser, TOKEN_EQUAL))
+                Initialization = ParseExpression(_Parser);
 
-        ASTType *Type = NewType(TYPE_NAMED);
+            ASTType *Type = NewType(TYPE_NAMED);
 
-        Type -> Name = XStrndup(TypeTok -> Start, TypeTok -> Length);
+            Type -> Name = XStrndup(TypeToken -> Start, TypeToken -> Length);
 
-        ASTStatement *Declaration = NewStatement(STMT_VAR_DECL);
+            ASTStatement *Declaration = NewStatement(STMT_VAR_DECL);
 
-        Declaration -> VariableDeclaration.Name = XStrndup(NameToken -> Start, NameToken -> Length);
-        Declaration -> VariableDeclaration.Type = Type;
-        Declaration -> VariableDeclaration.Initializer = Initialization;
-        Declaration -> VariableDeclaration.Modifiers  = MOD_NONE;
+            Declaration -> VariableDeclaration.Name = XStrndup(NameToken -> Start, NameToken -> Length);
+            Declaration -> VariableDeclaration.Type = Type;
+            Declaration -> VariableDeclaration.Initializer = Initialization;
+            Declaration -> VariableDeclaration.Modifiers = MOD_NONE;
 
-        TraceExit("ParseStatement", _Parser);
+            TraceExit("ParseStatement", _Parser);
 
-        return Declaration;
+            return Declaration;
+        }
     }
 
     if (ParserMatch(_Parser, TOKEN_IDENTIFIER)) {
@@ -1989,8 +2040,12 @@ static void ParseEnvironmentDeclaration(Parser *_Parser, ASTProgram *Program) {
 }
 
 static void ParseUsing(Parser *_Parser, ASTProgram *Program) {
-    while (ParserCheck(_Parser, TOKEN_IDENTIFIER) || ParserCheck(_Parser, TOKEN_DOUBLE_COLON)) {
+    if (ParserCheck(_Parser, TOKEN_IDENTIFIER))
         ParserAdvance(_Parser);
+
+    while (ParserMatch(_Parser, TOKEN_DOUBLE_COLON)) {
+        if (ParserCheck(_Parser, TOKEN_IDENTIFIER))
+            ParserAdvance(_Parser);
     }
 
     ParserMatch(_Parser, TOKEN_SEMICOLON);
