@@ -64,7 +64,7 @@ jobs:
           git push origin "$tag"
 
   build:
-    if: github.ref_type == 'tag'
+    #if: github.ref_type == 'tag'
     needs: auto-tag
     runs-on: ${{ matrix.os }}
     strategy:
