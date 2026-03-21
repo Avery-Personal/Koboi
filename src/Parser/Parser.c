@@ -1638,40 +1638,51 @@ ASTSubprogram *ParseSubprogram(Parser *_Parser) {
             Token *EnvName = Expect(_Parser, TOKEN_IDENTIFIER, "environment name");
 
             ASTEnvironment Env = {0};
-            Env.Name = XStrndup(EnvName->Start, EnvName->Length);
+            Env.Name = XStrndup(EnvName -> Start, EnvName -> Length);
 
-            if (RequiresCount >= RequiresCap) { RequiresCap *= 2; Requires = (ASTEnvironment *) realloc(Requires, sizeof(ASTEnvironment) * RequiresCap); }
+            if (RequiresCount >= RequiresCap) {
+                RequiresCap *= 2;
+
+                Requires = (ASTEnvironment *) realloc(Requires, sizeof(ASTEnvironment) * RequiresCap);
+            }
+            
             Requires[RequiresCount++] = Env;
         } else if (ParserMatch(_Parser, TOKEN_PROVIDES)) {
             ParserMatch(_Parser, TOKEN_ENV);
             Token *EnvName = Expect(_Parser, TOKEN_IDENTIFIER, "environment name");
 
             ASTEnvironment Env = {0};
-            Env.Name = XStrndup(EnvName->Start, EnvName->Length);
+
+            Env.Name = XStrndup(EnvName -> Start, EnvName -> Length);
 
             if (ParserMatch(_Parser, TOKEN_EQUAL))
                 Env.Value = ParseExpression(_Parser);
 
-            if (ProvidesCount >= ProvidesCap) { ProvidesCap *= 2; Provides = (ASTEnvironment *) realloc(Provides, sizeof(ASTEnvironment) * ProvidesCap); }
+            if (ProvidesCount >= ProvidesCap) {
+                ProvidesCap *= 2;
+
+                Provides = (ASTEnvironment *) realloc(Provides, sizeof(ASTEnvironment) * ProvidesCap);
+            }
+            
             Provides[ProvidesCount++] = Env;
         } else {
             break;
         }
     }
 
-    Subprogram->Requires = Requires;
-    Subprogram->RequireCount = RequiresCount;
-    Subprogram->Provides = Provides;
-    Subprogram->ProvideCount = ProvidesCount;
+    Subprogram -> Requires = Requires;
+    Subprogram -> RequireCount = RequiresCount;
+    Subprogram -> Provides = Provides;
+    Subprogram -> ProvideCount = ProvidesCount;
 
     if (ParserMatch(_Parser, TOKEN_ARROW) || ParserMatch(_Parser, TOKEN_COLON)) {
-        Subprogram->ReturnType = ParseType(_Parser);
+        Subprogram -> ReturnType = ParseType(_Parser);
     }
 
     ASTStatement *Body = ParseBlock(_Parser);
 
-    Subprogram->Body = Body -> Block.Statements;
-    Subprogram->BodyCount = Body -> Block.Count;
+    Subprogram -> Body = Body -> Block.Statements;
+    Subprogram -> BodyCount = Body -> Block.Count;
 
     _Parser -> FunctionDepth--;
     _Parser -> CurrentFunction = NULL;
