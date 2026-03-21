@@ -64,6 +64,7 @@ jobs:
           git push origin "$tag"
 
   build:
+    if: github.ref_type == 'tag'
     needs: auto-tag
     runs-on: ${{ matrix.os }}
     strategy:
@@ -120,7 +121,8 @@ jobs:
           artifacts/Koboi-build-windows-latest/Koboi.exe
           artifacts/Koboi-build-macos-latest/Koboi
           
-        name: Release ${{ github.ref_name }} 
+        name: Release ${{ needs.auto-tag.outputs.tag }}
+        tag_name: ${{ needs.auto-tag.outputs.tag }}
         draft: false
         prerelease: false
 
