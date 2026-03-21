@@ -247,6 +247,10 @@ match x {
     }
 }
 
+concept {
+    // IN WORKS
+}
+
 context Release {
     Koboi = "Amazing"
 }
@@ -444,4 +448,18 @@ world B extends A {
 
 world C extends B {
     pln(k) // 2
+}
+
+// Language implementation (Rebekah, Naomi, & Avi-Assembyl)
+nao {
+    reg r1
+    reg r2
+
+    main:
+        r1 = 5
+        r2 = 3
+
+        r1 = r1 * r2
+
+        halt
 }
