@@ -2,129 +2,57 @@ name: Release Executables
 
 on:
   push:
-    branches: [main]
     tags:
       - '*'
 
 jobs:
-  auto-tag:
-    if: github.ref_type == 'branch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    outputs:
-      tag: ${{ steps.extract.outputs.tag }}
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get commit message
-        id: commit
-        run: |
-          msg=$(git log -1 --pretty=%B)
-          echo "message<<EOF" >> $GITHUB_OUTPUT
-          echo "$msg" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Extract AVSS version
-        id: extract
-        run: |
-          msg="${{ steps.commit.outputs.message }}"
-          echo "Commit message: $msg"
-
-          # Extract pattern like 1.9s24
-          if [[ $msg =~ ([0-9]+\.[0-9]+[a-zA-Z][0-9]+) ]]; then
-            version="${BASH_REMATCH[1]}"
-            echo "Found version: $version"
-          else
-            echo "No AVSS version found in commit message"
-            exit 1
-          fi
-
-          echo "tag=$version" >> $GITHUB_OUTPUT
-
-      - name: Create tag
-        run: |
-          tag="${{ steps.extract.outputs.tag }}"
-
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          # Prevent duplicate tags
-          if git rev-parse "$tag" >/dev/null 2>&1; then
-            echo "Tag already exists, skipping"
-            exit 0
-          fi
-
-          git tag "$tag"
-          git push origin "$tag"
-
   build:
-    #if: github.ref_type == 'tag'
-    needs: auto-tag
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install build-essential
+      - name: Install dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install build-essential
 
-    - name: Build source
-      shell: bash
-      run: |
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi.exe
-        else
-          gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi
-        fi
+      - name: Build
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi.exe
+          else
+            gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi
+          fi
 
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Koboi-build-${{ matrix.os }}
-        path: |
-          Koboi*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Koboi-${{ matrix.os }}
+          path: Koboi*
 
-  create-release:
+  release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-
-    - name: List artifacts
-      run: ls -R artifacts
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          artifacts/Koboi-build-ubuntu-latest/Koboi
-          artifacts/Koboi-build-windows-latest/Koboi.exe
-          artifacts/Koboi-build-macos-latest/Koboi
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            artifacts/Koboi-ubuntu-latest/Koboi
+            artifacts/Koboi-windows-latest/Koboi.exe
+            artifacts/Koboi-macos-latest/Koboi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-        name: Release ${{ needs.auto-tag.outputs.tag }}
-        tag_name: ${{ needs.auto-tag.outputs.tag }}
-        draft: false
-        prerelease: false
-
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
