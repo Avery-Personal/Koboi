@@ -5,6 +5,14 @@
 #include "Tokens.h"
 #include "Lexer.h"
 
+#define RED "\x1b[31m"
+#define BLUE "\x1b[34m"
+#define PINK "\x1b[95m"
+#define NONE "\x1b[0m"
+
+#define BOLD "\x1b[1m"
+#define PRINT "\x1b[0m"
+
 int IsDigit(int Character) {
     if (Character >= '0' && Character <= '9')
         return 1;
@@ -236,7 +244,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
             if (Len == 3 && memcmp(Start, "sys", 3) == 0) return TOKEN_SYS;
             if (Len == 4 && memcmp(Start, "safe", 4) == 0) return TOKEN_SAFE;
             if (Len == 5 && memcmp(Start, "state", 5) == 0) return TOKEN_STATE;
-            if (Len == 5 && memcmp(Start, "struct", 5) == 0) return TOKEN_STRUCT;
+            if (Len == 6 && memcmp(Start, "struct", 6) == 0) return TOKEN_STRUCT;
 
             break;
 
@@ -430,24 +438,117 @@ char LexerNext(Lexer *_Lexer) {
     return Character;
 }
 
+void PushDiagnostic(Lexer *_Lexer, Diagnostic Diagnostics) {
+    if (_Lexer -> Diagnostics.Count >= _Lexer -> Diagnostics.Capacity) {
+        _Lexer -> Diagnostics.Capacity = _Lexer -> Diagnostics.Capacity ? _Lexer -> Diagnostics.Capacity * 2 : 8;
+        _Lexer -> Diagnostics.Diagnostics = realloc(_Lexer -> Diagnostics.Diagnostics, sizeof(Diagnostic) * _Lexer -> Diagnostics.Capacity);
+    }
+
+    _Lexer -> Diagnostics.Diagnostics[_Lexer -> Diagnostics.Count++] = Diagnostics;
+}
+
+void LexerReport(Lexer *_Lexer, DiagnosticLevel Level, const char *Message, const char *Hint) {
+    Diagnostic _Diagnostic = {0};
+
+    _Diagnostic.Level = Level;
+    _Diagnostic.Message = Message;
+    _Diagnostic.Hint = Hint;
+
+    _Diagnostic.LineStart = _Lexer -> Line;
+    _Diagnostic.ColumnStart = _Lexer -> Column;
+
+    _Diagnostic.LineEnd = _Lexer -> Line;
+    _Diagnostic.ColumnEnd = _Lexer -> Column;
+
+    _Diagnostic.OffsetStart = _Lexer -> Cursor;
+    _Diagnostic.OffsetEnd  = _Lexer -> Cursor;
+
+    _Diagnostic.Source = _Lexer -> Source;
+    _Diagnostic.SourceLength = _Lexer -> Length;
+
+    PushDiagnostic(_Lexer, _Diagnostic);
+}
+
 static void LexerErrorAt(Lexer *_Lexer, const char *Message) {
     if (_Lexer -> HasError) return;
 
+    _Lexer -> Error.Type = LEXER_ERROR_INVALID_CHAR;
     _Lexer -> Error.Line = _Lexer -> Line;
     _Lexer -> Error.Column = _Lexer -> Column;
 
+    _Lexer -> Error.ContextStart = _Lexer -> Source + (_Lexer -> Cursor > 10 ? _Lexer -> Cursor - 10 : 0);
+    _Lexer -> Error.ContextLength = 20;
+
     _Lexer -> Error.Message = Message;
+
     _Lexer -> HasError = 1;
 }
 
-static void LexingError(Lexer *_Lexer) {
-    fprintf(stderr, "[Lexer Error] Line %u:%u >> %s\n", _Lexer -> Error.Line, _Lexer -> Error.Column - 1, _Lexer -> Error.Message);
+const char *GetLineStart(const char *Source, size_t Offset) {
+    const char *Pointer = Source + Offset;
+
+    while (Pointer > Source && Pointer[-1] != '\n')
+        Pointer--;
+
+    return Pointer;
+}
+
+const char *GetLineEnd(const char *Start) {
+    const char *Pointer = Start;
+
+    while (*Pointer && *Pointer != '\n')
+        Pointer++;
+
+    return Pointer;
+}
+
+void PrintDiagnostics(Lexer *_Lexer) {
+    for (size_t i = 0; i < _Lexer -> Diagnostics.Count; i++) {
+        Diagnostic *_Diagnostic = &_Lexer -> Diagnostics.Diagnostics[i];
+
+        const char *LevelString = _Diagnostic -> Level == DIAG_ERROR ? "ERROR" : _Diagnostic -> Level == DIAG_WARNING ? "WARNING" : _Diagnostic -> Level == DIAG_NOTE ? "Note" : "Hint";
+        const char *LevelColor = _Diagnostic -> Level == DIAG_ERROR ? RED : _Diagnostic -> Level == DIAG_WARNING ? PINK : _Diagnostic -> Level == DIAG_NOTE ? BLUE : NONE;
+
+        fprintf(stderr, "%s:%u:%u - %s%s:%s %s%s\n", _Lexer -> CurrentFile, _Diagnostic -> LineStart, _Diagnostic -> ColumnStart, LevelColor, LevelString, NONE, _Diagnostic -> Message, NONE);
+
+        const char *LineStart = GetLineStart(_Diagnostic->Source, _Diagnostic->OffsetStart);
+        const char *LineEnd = GetLineEnd(LineStart);
+
+        size_t LineLength = LineEnd - LineStart;
+
+        fwrite(LineStart, 1, LineLength, stderr);
+        fprintf(stderr, "\n");
+
+        uint32_t Column = _Diagnostic -> OffsetStart - (LineStart - _Diagnostic -> Source);
+        uint32_t EndColumn = _Diagnostic -> OffsetEnd - (LineStart - _Diagnostic -> Source);
+
+        if (EndColumn <= Column)
+            EndColumn = Column + 1;
+
+        for (uint32_t i = 0; i < Column - 1; i++) {
+            if (LineStart[i] == '\t')
+                fprintf(stderr, "\t");
+            else
+                fprintf(stderr, " ");
+        }
+
+        fprintf(stderr, "%s", LevelColor);
+
+        for (uint32_t i = Column; i < EndColumn; i++)
+            fprintf(stderr, "^");
+
+        fprintf(stderr, "%s\n", NONE);
+
+        if (_Diagnostic -> Hint)
+            fprintf(stderr, "  Hint: %s\n\n", _Diagnostic -> Hint);
+    }
 }
 
 Token LexerNextToken(Lexer *_Lexer) {
     LexerSkipWC(_Lexer);
 
     Token _Token = {0};
+    static Token LastToken = {0};
 
     _Token.Line = _Lexer -> Line;
     _Token.Column = _Lexer -> Column;
@@ -529,7 +630,7 @@ Token LexerNextToken(Lexer *_Lexer) {
 
             if (NextCharacter == '\n') {
                 LexerErrorAt(_Lexer, "newline in string literal");\
-                LexingError(_Lexer);
+                PrintDiagnostics(_Lexer);
 
                 break;
             }
@@ -543,14 +644,14 @@ Token LexerNextToken(Lexer *_Lexer) {
                     case '\\': break;
                     case '"': break;
 
-                    default: LexerErrorAt(_Lexer, "invalid escape sequence");
+                    default: LexerReport(_Lexer, DIAG_ERROR, "invalid escape sequence", "valid escapes are: \\n, \\t, \\\\, \\\"");
                 }
             }
         }
 
         if (LexerIsAtEnd(_Lexer)) {
-            LexerErrorAt(_Lexer, "unterminated string literal");
-            LexingError(_Lexer);
+            LexerReport(_Lexer, DIAG_ERROR, "unterminated string literal", "add a closing '\"' before end of line");
+            PrintDiagnostics(_Lexer);
         }
 
         _Token.Start = _Lexer -> Source + Start;
@@ -570,7 +671,7 @@ Token LexerNextToken(Lexer *_Lexer) {
 
         if (LexerNext(_Lexer) != '\'') {
             LexerErrorAt(_Lexer, "invalid character literal");
-            LexingError(_Lexer);
+            PrintDiagnostics(_Lexer);
         }
 
         _Token.Type = TOKEN_CHAR_LITERAL;
@@ -691,8 +792,17 @@ Token LexerNextToken(Lexer *_Lexer) {
             default:
                 _Token.Type = TOKEN_ERROR;
 
-                LexerErrorAt(_Lexer, "unexpected character");
-                LexingError(_Lexer);
+                char _Character = Character;
+
+                if (_Character == '@') {
+                    LexerReport(_Lexer, DIAG_ERROR, "unexpected '@' outside attribute or macro", "did you mean to use a macro or annotation?"); }
+                else if (_Character == '$') {
+                    LexerReport(_Lexer, DIAG_ERROR, "unexpected '$' token", "this symbol is reserved for future features");
+                } else {
+                    LexerReport(_Lexer, DIAG_ERROR, "unexpected character", "check for typos or invalid syntax");
+                }
+
+                PrintDiagnostics(_Lexer);
         }
     }
 
@@ -720,11 +830,38 @@ Token LexerNextToken(Lexer *_Lexer) {
             _Token.Flags |= TOKEN_FLAG_ASSIGNMENT;
 
             break;
+
+        default: break;
     }
 
-    ApplyTokenContext(_Lexer, &_Token);
+    Token Current = _Token;
 
-    return _Token;
+    //if (LastToken.Type == TOKEN_EQUAL && _Token.Type == TOKEN_EQUAL) {
+    //    LexerReport(_Lexer, DIAG_ERROR, "unexpected '=' after '='", "did you mean '=='?");
+    //}
+
+    //if (LastToken.Type == TOKEN_FUNCTION && _Token.Type == TOKEN_FUNCTION) {
+    //    LexerReport(_Lexer, DIAG_ERROR, "duplicate 'fn' keyword", "remove redundant keyword");
+    //}
+
+    //if (IsAlphanumeric(LexerPeek(_Lexer))) {
+    //    LexerReport(_Lexer, DIAG_ERROR, "invalid numeric literal", "identifiers cannot start with a number");
+    //}
+
+    Current.TokenIndex = _Lexer -> Cursor;
+
+    ApplyTokenContext(_Lexer, &Current);
+
+    if (_Lexer -> Diagnostics.Count > 0) {
+        Diagnostic *_Diagnostic = &_Lexer -> Diagnostics.Diagnostics[_Lexer -> Diagnostics.Count - 1];
+
+        _Diagnostic -> NearToken = &Current;
+        _Diagnostic -> PreviousToken = &LastToken;
+    }
+
+    LastToken = Current;
+    
+    return Current;
 }
 
 TokenStream Tokenize(Lexer *_Lexer) {
@@ -736,6 +873,8 @@ TokenStream Tokenize(Lexer *_Lexer) {
     while (1) {
         Token _Token = LexerNextToken(_Lexer);
 
+        _Token.Offset = _Lexer -> Cursor - 1;
+
         if (_TokenStream.Count >= _TokenStream.Capacity) {
             _TokenStream.Capacity *= 2;
             _TokenStream.Data = realloc(_TokenStream.Data, sizeof(Token) * _TokenStream.Capacity);
@@ -746,8 +885,12 @@ TokenStream Tokenize(Lexer *_Lexer) {
 
         _TokenStream.Data[_TokenStream.Count++] = _Token;
 
-        if (_Token.Type == TOKEN_EOF)
-            break;
+        if (_Token.Type == TOKEN_EOF) {
+             if (!(_Lexer -> BraceDepth > 0))
+                break;
+
+            LexerReport(_Lexer, DIAG_ERROR, "unclosed '{'", "expected '}' before end of file");
+        }
     }
 
     return _TokenStream;

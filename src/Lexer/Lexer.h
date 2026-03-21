@@ -1,30 +1,30 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "Tokens.h"
+    #include "Tokens.h"
 
-int IsDigit(int Character);
-int IsAlphanumericNumber(int Character);
-int IsAlphanumeric(int Character);
+    int IsDigit(int Character);
+    int IsAlphanumericNumber(int Character);
+    int IsAlphanumeric(int Character);
 
-const char *TokenTypeToString(TokenType Type);
+    const char *TokenTypeToString(TokenType Type);
 
-int LexerIsAtEnd(Lexer *_Lexer);
-void LexerSkipWC(Lexer *_Lexer);
+    int LexerIsAtEnd(Lexer *_Lexer);
+    void LexerSkipWC(Lexer *_Lexer);
 
-TokenType ResolveIdentifier(const char* Start, size_t Len);
+    TokenType ResolveIdentifier(const char* Start, size_t Len);
 
-Lexer LexerCreate(const char *Source);
+    Lexer LexerCreate(const char *Source);
 
-char LexerPeek(Lexer *_Lexer);
-Token LexerPeekToken(Lexer *_Lexer);
-Token LexerConsumePeek(Lexer *_Lexer);
-char LexerNext(Lexer *_Lexer);
+    char LexerPeek(Lexer *_Lexer);
+    Token LexerPeekToken(Lexer *_Lexer);
+    Token LexerConsumePeek(Lexer *_Lexer);
+    char LexerNext(Lexer *_Lexer);
 
-static void LexerErrorAt(Lexer *_Lexer, const char *Message);
-static void LexingError(Lexer *_Lexer);
+    static void LexerErrorAt(Lexer *_Lexer, const char *Message);
+    static void LexingError(Lexer *_Lexer);
 
-Token LexerNextToken(Lexer *_Lexer);
-TokenStream Tokenize(Lexer *_Lexer);
+    Token LexerNextToken(Lexer *_Lexer);
+    TokenStream Tokenize(Lexer *_Lexer);
 
 #endif

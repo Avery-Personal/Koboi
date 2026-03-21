@@ -149,6 +149,13 @@
         TOKEN_FLAG_BINARY = 1 << 5,
     } TokenFlag;
 
+    typedef enum {
+        DIAG_ERROR,
+        DIAG_WARNING,
+        DIAG_NOTE,
+        DIAG_HINT,
+    } DiagnosticLevel;
+
     typedef struct {
         TokenType Type;
 
@@ -157,6 +164,7 @@
 
         uint32_t Line;
         uint32_t Column;
+        uint32_t Offset;
 
         uint32_t FileID;
         uint32_t ScopeID;
@@ -207,7 +215,37 @@
     } LexerContext;
 
     typedef struct {
+        DiagnosticLevel Level;
+
+        const char *Message;
+        const char *Hint;
+
+        uint32_t LineStart;
+        uint32_t ColumnStart;
+
+        uint32_t LineEnd;
+        uint32_t ColumnEnd;
+
+        uint32_t OffsetStart;
+        uint32_t OffsetEnd;
+
         const char *Source;
+        size_t SourceLength;
+
+        Token *NearToken;
+        Token *PreviousToken;
+        Token *NextToken;
+    } Diagnostic;
+
+    typedef struct {
+        Diagnostic *Diagnostics;
+        size_t Count;
+        size_t Capacity;
+    } DiagnosticList;
+
+    typedef struct {
+        const char *Source;
+        char *CurrentFile;
 
         size_t Length;
         size_t Cursor;
@@ -231,6 +269,8 @@
 
         Token PeekedToken;
         int HasPeeked;
+
+        DiagnosticList Diagnostics;
 
         LexerError Error;
         int HasError;

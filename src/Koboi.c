@@ -41,6 +41,9 @@ int main(int argc, char **argv) {
     }
 
     Lexer __LEXER__ = LexerCreate(Source);
+
+    __LEXER__.CurrentFile = argv[1];
+
     TokenStream __TOKENS__ = Tokenize(&__LEXER__);
 
     free(Source);
