@@ -180,6 +180,17 @@ void LexerSkipWC(Lexer *_Lexer) {
     }
 }
 
+static void ApplyTokenContext(Lexer *_Lexer, Token *_Token) {
+    if (_Lexer -> Context.UnsafeDepth > 0)
+        _Token -> Flags |= TOKEN_FLAG_OPERATOR << 8;
+
+    if (_Lexer -> Context.MacroDepth > 0)
+        _Token -> Flags |= TOKEN_FLAG_KEYWORD << 9;
+
+    if (_Lexer -> Context.MatchDepth > 0)
+        _Token -> Flags |= TOKEN_FLAG_BINARY << 10;
+}
+
 TokenType ResolveIdentifier(const char *Start, size_t Len) {
     switch (Start[0]) {
         case 'f':
@@ -351,12 +362,59 @@ char LexerNext(Lexer *_Lexer) {
     char Character = LexerPeek(_Lexer);
 
     switch (Character) {
-        case '{': _Lexer -> BraceDepth++; break;
-        case '}': _Lexer -> BraceDepth--; break;
-        case '(': _Lexer -> ParenDepth++; break;
-        case ')': _Lexer -> ParenDepth--; break;
-        case '[': _Lexer -> BracketDepth++; break;
-        case ']': _Lexer -> BracketDepth--; break;
+        case '{':
+            _Lexer -> BraceDepth++;
+
+            if (_Lexer -> InUnsafe) {
+                _Lexer -> Context.UnsafeDepth++;
+                _Lexer -> InUnsafe = 0;
+            }
+
+            if (_Lexer -> InMatch) {
+                _Lexer -> Context.MatchDepth++;
+                _Lexer -> InMatch = 0;
+            }
+
+            if (_Lexer -> InMacro) {
+                _Lexer -> Context.MacroDepth++;
+                _Lexer -> InMacro = 0;
+            }
+
+            break;
+
+        case '}':
+            _Lexer -> BraceDepth--;
+
+            if (_Lexer -> Context.UnsafeDepth > 0)
+                _Lexer -> Context.UnsafeDepth--;
+
+            if (_Lexer -> Context.MatchDepth > 0)
+                _Lexer -> Context.MatchDepth--;
+
+            if (_Lexer -> Context.MacroDepth > 0)
+                _Lexer -> Context.MacroDepth--;
+
+            break;
+
+        case '(':
+            _Lexer -> ParenDepth++;
+
+            break;
+
+        case ')':
+            _Lexer -> ParenDepth--;
+
+            break;
+
+        case '[':
+            _Lexer -> BracketDepth++;
+
+            break;
+
+        case ']':
+            _Lexer -> BracketDepth--;
+
+            break;
     }
 
     if (Character == '\n') {
@@ -645,6 +703,26 @@ Token LexerNextToken(Lexer *_Lexer) {
     if (_Token.Type == TOKEN_UNSAFE) {
         _Lexer -> InUnsafe = 1;
     }
+
+    if (_Token.Type == TOKEN_INT_LITERAL || _Token.Type == TOKEN_FLOAT_LITERAL || _Token.Type == TOKEN_STRING_LITERAL || _Token.Type == TOKEN_CHAR_LITERAL) {
+        _Token.Flags |= TOKEN_FLAG_LITERAL;
+    } else if (TokenIsOperator(_Token.Type)) {
+        _Token.Flags |= TOKEN_FLAG_OPERATOR;
+        _Token.Flags |= TOKEN_FLAG_BINARY;
+    } else if (_Token.Type == TOKEN_EXCLAMATION || _Token.Type == TOKEN_MINUS) {
+        _Token.Flags |= TOKEN_FLAG_UNARY;
+    }
+
+    switch (_Token.Type) {
+        case TOKEN_EQUAL:
+        case TOKEN_PLUS_EQUAL:
+        case TOKEN_MINUS_EQUAL:
+            _Token.Flags |= TOKEN_FLAG_ASSIGNMENT;
+
+            break;
+    }
+
+    ApplyTokenContext(_Lexer, &_Token);
 
     return _Token;
 }
