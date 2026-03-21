@@ -162,6 +162,9 @@ void LexerSkipWC(Lexer *_Lexer) {
             LexerNext(_Lexer);
         } else if (Character == '\n') {
             LexerNext(_Lexer);
+        } else if (Character == '^') {
+            while (!LexerIsAtEnd(_Lexer) && LexerPeek(_Lexer) != '\n')
+                LexerNext(_Lexer);
         } else if (Character == '/' && _Lexer -> Cursor + 1 < _Lexer -> Length && _Lexer -> Source[_Lexer -> Cursor + 1] == '/') {
             LexerNext(_Lexer);
             LexerNext(_Lexer);
@@ -256,6 +259,7 @@ TokenType ResolveIdentifier(const char *Start, size_t Len) {
 
         case 't':
             if (Len == 7 && memcmp(Start, "trusted", 7) == 0) return TOKEN_TRUSTED;
+            if (Len == 11 && memcmp(Start, "transaction", 11) == 0) return TOKEN_TRANSACTION;
 
             break;
 
