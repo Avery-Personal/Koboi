@@ -36,6 +36,7 @@ jobs:
             gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi.exe
           else
             gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -70,4 +71,3 @@ jobs:
             artifacts/Koboi-macos-latest/Koboi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
