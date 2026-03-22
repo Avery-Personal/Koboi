@@ -36,9 +36,9 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi-Windows.exe
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi-MacOS
+            gcc src/Koboi.c src/Lexer/Lexer.c src/Parser/Parser.c -o Koboi-MacOS
           else
-            gcc src/Koboi.c src/Lexer/Lexer.c -o Koboi-Linux
+            gcc src/Koboi.c src/Lexer/Lexer.c src/Parser/Parser.c -o Koboi-Linux
           fi
 
       - uses: actions/upload-artifact@v4
