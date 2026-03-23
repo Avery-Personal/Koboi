@@ -4,6 +4,7 @@
 
 #include "Lexer/Lexer.h"
 #include "Parser/Parser.h"
+#include "Compiler/Lower.h"
 
 char *ReadFile(const char *Path) {
     FILE *File = fopen(Path, "rb");
@@ -47,7 +48,8 @@ int main(int argc, char **argv) {
 
     TokenStream __TOKENS__ = Tokenize(&__LEXER__);
     Parser __PARSER__ = CreateParser(&__TOKENS__);
-    ASTProgram *__PROGRAM__ = ParseProgram(&__PARSER__);
+    ASTProgram *__APROGRAM__ = ParseProgram(&__PARSER__);
+    HIRProgram *__HPROGRAM__ = LowerASTToHIR(__APROGRAM__);
 
     if (__PARSER__.HasError) {
         return 1;

@@ -1,11 +1,11 @@
-#include "Lower.h"
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
 #include <ctype.h>
+
+#include "Lower.h"
 
 static const char *LStrDup(const char *String) {
     if (!String) return NULL;
@@ -682,15 +682,16 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
 
         case EXPR_INDEX: {
             ASTIndexExpression *Index = &Expression -> Index;
+
             HIRValue *Target = LowerExpression(Context, Index -> Target);
-            HIRValue *Index = LowerExpression(Context, Index -> Index);
-            if (!Target || !Index)
+            HIRValue *IndexValue = LowerExpression(Context, Index -> Index);
+            if (!Target || !IndexValue)
                 return NULL;
                 
             HIRType *ElementType = (Target -> Type && Target -> Type -> ElementType) ? Target -> Type -> ElementType : HIRMakeVoidType();
             HIRValue *Destination = LMakeTemp(Context, ElementType);
 
-            LEmit(Context, HIRInstArrayIndex(Destination, Target, Index));
+            LEmit(Context, HIRInstArrayIndex(Destination, Target, IndexValue));
 
             return Destination;
         }
@@ -1049,7 +1050,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
             ASTExpression *RHSExpression = Statement -> Assign.Value;
 
             HIRValue *Value = LowerExpression(Context, RHSExpression);
-            if (!Value) break;
+            if (!Value)
+                break;
 
             if (LHSExpression -> Kind == EXPR_IDENTIFIER) {
                 const char *Name   = LHSExpression -> Identifier;
@@ -1703,12 +1705,13 @@ int LowerHasErrors(LowerContext *Context) {
 }
 
 void LowerPrintDiagnostics(LowerContext *Context) {
-    if (!Context) return;
+    if (!Context)
+        return;
 
     for (size_t I = 0; I < Context -> DiagCount; I++) {
         LowerDiagnostic *Diagnostic = &Context -> Diagnostics[I];
         
-        const char *KindString = Diagnostic -> Kind == LOWER_DIAG_ERROR   ? "error"   : Diagnostic -> Kind == LOWER_DIAG_WARNING ? "warning" : "note";
+        const char *KindString = Diagnostic -> Kind == LOWER_DIAG_ERROR   ? "ERROR"   : Diagnostic -> Kind == LOWER_DIAG_WARNING ? "WARNING" : "Note";
         
         if (Diagnostic -> Line > 0) {
             fprintf(stderr, "[%s] %u:%u: %s\n", KindString, Diagnostic -> Line, Diagnostic -> Column, Diagnostic -> Message);

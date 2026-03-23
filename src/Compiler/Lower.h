@@ -106,7 +106,7 @@
         int HasError;
     } LowerContext;
 
-    HIRProgram  *LowerASTToHIR(ASTProgram *Program);
+    HIRProgram *LowerASTToHIR(ASTProgram *Program);
     LowerContext *LowerCreateContext(HIRProgram *Program);
     void LowerDestroyContext(LowerContext *Context);
 
