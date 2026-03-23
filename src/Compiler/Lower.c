@@ -1057,8 +1057,26 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
                 const char *Name   = LHSExpression -> Identifier;
 
                 HIRValue *Target = LLookup(Context, Name, 0, 0);
-                if (!Target)
-                    break;
+                if (!Target) {
+                    Context -> HasError = 0;
+                    Context -> DiagCount--;
+
+                    HIRType *InferredType = Value->Type ? Value->Type : HIRMakeVoidType();
+
+                    Target = HIRCreateVar(Name, InferredType, HIR_MOD_NONE);
+                    
+                    Target -> ScopeID = Context->CurrentScope ? Context->CurrentScope->ID : 0;
+                    Target -> Ownership.Kind = HIR_OWN_MOVE;
+
+                    LBind(Context, Name, Target);
+
+                    if (Context -> CurrentFunction) {
+                        HIRFunction *Function = Context -> CurrentFunction;
+
+                        Function -> Locals = realloc(Function -> Locals, (Function -> LocalCount + 1) * sizeof(HIRValue *));
+                        Function -> Locals[Function -> LocalCount++] = Target;
+                    }
+                }
 
                 if (Target -> Modifiers & HIR_MOD_CONST) {
                     LError(Context, 0, 0, "cannot assign to const '%s'", Name);
@@ -1554,8 +1572,8 @@ HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram) {
     return Function;
 }
 
-void LowerProgram(LowerContext *Context, ASTProgram *Prog) {
-    if (Prog -> StatementCount > 0) {
+void LowerProgram(LowerContext *Context, ASTProgram *Program) {
+    if (Program -> StatementCount > 0) {
         HIRType *VoidType = HIRMakeVoidType();
         HIRFunction *InitializeFunction = HIRCreateFunction("__koboi_init__", VoidType);
 
@@ -1566,8 +1584,16 @@ void LowerProgram(LowerContext *Context, ASTProgram *Prog) {
         LNewBlock(Context, LGenLabel(Context, "init_entry"));
         LPushScope(Context);
 
-        for (size_t I = 0; I < Prog -> StatementCount; I++) {
-            LowerStatement(Context, Prog -> Statements[I]);
+        for (size_t I = 0; I < Program -> StatementCount; I++) {
+            ASTStatement *Statement = Program -> Statements[I];
+            if (!Statement)
+                continue;
+
+            (void) Statement;
+        }
+
+        for (size_t I = 0; I < Program -> StatementCount; I++) {
+            LowerStatement(Context, Program -> Statements[I]);
         }
 
         LDeferRunAll(Context);
@@ -1579,8 +1605,8 @@ void LowerProgram(LowerContext *Context, ASTProgram *Prog) {
         HIRAddFunction(Context -> Program, InitializeFunction);
     }
 
-    for (size_t I = 0; I < Prog -> MacroCount; I++) {
-        ASTMacro *Macro  = Prog -> Macros[I];
+    for (size_t I = 0; I < Program -> MacroCount; I++) {
+        ASTMacro *Macro  = Program -> Macros[I];
         HIRType *VoidType = HIRMakeVoidType();
 
         HIRFunction *MacroFunction  = HIRCreateFunction(Macro -> Name, VoidType);
@@ -1617,8 +1643,8 @@ void LowerProgram(LowerContext *Context, ASTProgram *Prog) {
         HIRAddFunction(Context -> Program, MacroFunction);
     }
 
-    for (size_t I = 0; I < Prog -> SubprogramCount; I++) {
-        ASTSubprogram *Subprogram = Prog -> Subprograms[I];
+    for (size_t I = 0; I < Program -> SubprogramCount; I++) {
+        ASTSubprogram *Subprogram = Program -> Subprograms[I];
         HIRFunction *Function  = LowerSubprogram(Context, Subprogram);
 
         if (strcmp(Subprogram -> Name, "main") == 0) {
