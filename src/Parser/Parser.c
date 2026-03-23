@@ -1918,22 +1918,93 @@ ASTSubprogram *ParseSubprogram(Parser *_Parser) {
 }
 
 static void ParseEnumDecl(Parser *_Parser, ASTProgram *Program) {
-    Expect(_Parser, TOKEN_IDENTIFIER, "enum name");
+    TraceEnter("ParseEnumDecl", _Parser);
+ 
+    Token *NameToken = Expect(_Parser, TOKEN_IDENTIFIER, "enum name");
+    const char *EnumName = XStrndup(NameToken -> Start, NameToken -> Length);
+ 
     Expect(_Parser, TOKEN_LBRACE, "'{'");
-
+ 
+    size_t Cap = 8;
+    size_t Count = 0;
+    
+    const char **Variants = (const char **) XMalloc(sizeof(const char *) * Cap);
+ 
     while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
-        if (ParserCheck(_Parser, TOKEN_IDENTIFIER))
-            ParserAdvance(_Parser);
+        if (ParserCheck(_Parser, TOKEN_IDENTIFIER)) {
+            Token *Variant = ParserAdvance(_Parser);
+ 
+            if (Count >= Cap) {
+                Cap *= 2;
 
+                Variants = (const char **) realloc(Variants, sizeof(const char *) * Cap);
+            }
+ 
+            Variants[Count++] = XStrndup(Variant -> Start, Variant -> Length);
+        }
+ 
         ParserMatch(_Parser, TOKEN_COMMA);
     }
-
+ 
     Expect(_Parser, TOKEN_RBRACE, "'}'");
+ 
+    ASTStatement *Statement = NewStatement(STMT_ENUM_DECL);
+ 
+    Statement -> EnumDecl.Name = EnumName;
+    Statement -> EnumDecl.Variants = Variants;
+    Statement -> EnumDecl.VariantCount = Count;
+ 
+    Program -> StatementCount++;
+    Program -> Statements = (ASTStatement **) realloc(Program -> Statements, sizeof(ASTStatement *) * Program -> StatementCount);
+    Program -> Statements[Program -> StatementCount - 1] = Statement;
+ 
+    TraceExit("ParseEnumDecl", _Parser);
+}
+ 
+static void ParseStateDecl(Parser *_Parser, ASTProgram *Program) {
+    TraceEnter("ParseStateDecl", _Parser);
+ 
+    Token *NameToken = Expect(_Parser, TOKEN_IDENTIFIER, "state name");
+    const char *StateName = XStrndup(NameToken -> Start, NameToken -> Length);
+ 
+    Expect(_Parser, TOKEN_LBRACE, "'{'");
+ 
+    size_t Cap = 8;
+    size_t Count = 0;
+
+    const char **Variants = (const char **) XMalloc(sizeof(const char *) * Cap);
+ 
+    while (!ParserCheck(_Parser, TOKEN_RBRACE) && !ParserCheck(_Parser, TOKEN_EOF)) {
+        if (ParserCheck(_Parser, TOKEN_IDENTIFIER)) {
+            Token *Variant = ParserAdvance(_Parser);
+ 
+            if (Count >= Cap) {
+                Cap *= 2;
+
+                Variants = (const char **) realloc(Variants, sizeof(const char *) * Cap);
+            }
+ 
+            Variants[Count++] = XStrndup(Variant -> Start, Variant -> Length);
+        }
+ 
+        ParserMatch(_Parser, TOKEN_COMMA);
+    }
+ 
+    Expect(_Parser, TOKEN_RBRACE, "'}'");
+ 
+    ASTStatement *Statement = NewStatement(STMT_STATE_DECL);
+ 
+    Statement -> EnumDecl.Name = StateName;
+    Statement -> EnumDecl.Variants = Variants;
+    Statement -> EnumDecl.VariantCount = Count;
+ 
+    Program -> StatementCount++;
+    Program -> Statements = (ASTStatement **) realloc(Program -> Statements, sizeof(ASTStatement *) * Program -> StatementCount);
+    Program -> Statements[Program -> StatementCount - 1] = Statement;
+ 
+    TraceExit("ParseStateDecl", _Parser);
 }
 
-static void ParseStateDecl(Parser *_Parser, ASTProgram *Program) {
-    ParseEnumDecl(_Parser, Program);
-}
 
 static void ParseStructDecl(Parser *_Parser, ASTProgram *Program) {
     Expect(_Parser, TOKEN_IDENTIFIER, "struct name");

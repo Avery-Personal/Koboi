@@ -208,6 +208,13 @@
             } VariableDeclaration;
 
             struct {
+                const char *Name;
+                
+                const char **Variants;
+                size_t VariantCount;
+            } EnumDecl;
+
+            struct {
                 ASTExpression *Target;
                 ASTExpression *Value;
             } Assign;
