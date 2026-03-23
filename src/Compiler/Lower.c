@@ -560,6 +560,19 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
         }
 
         case EXPR_IDENTIFIER: {
+            const char *Name = Expression -> Identifier;
+
+            if (strncmp(Name, "sys.", 4) == 0) {
+                const char *SysVar = Name + 4;
+
+                HIRType *Type = HIRMakeBoolType();
+                HIRValue *Destination = LMakeTemp(Context, Type);
+
+                LEmit(Context, HIRInstSysQuery(Destination, SysVar));
+
+                return Destination;
+            }
+
             return LLookup(Context, Expression -> Identifier, Line, Column);
         }
 
