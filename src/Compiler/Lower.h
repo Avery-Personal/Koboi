@@ -113,6 +113,8 @@
     void LowerProgram(LowerContext *Context, ASTProgram *Program);
     HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram);
     void LowerStatement(LowerContext *Context, ASTStatement *Statement);
+    static HIRValue *LLowerMemberRead(LowerContext *Context, ASTExpression *ObjectExpression, ASTExpression *FieldExpression, uint32_t Line, uint32_t Column);
+    static int LLowerMemberWrite(LowerContext *Context, ASTExpression *ObjectExpression, ASTExpression *FieldExpression, HIRValue *RHS, uint32_t Line, uint32_t Column);
     HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression);
     HIRType *LowerType(ASTType *Type);
 

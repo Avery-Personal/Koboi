@@ -98,8 +98,8 @@ static void LPopScope(LowerContext *Context) {
 
     LowerScope *String = Context -> CurrentScope;
 
-    for (size_t I = 0; I < String -> Count; I++) {
-        LowerBinding *Block = &String -> Bindings[I];
+    for (size_t i = 0; i < String -> Count; i++) {
+        LowerBinding *Block = &String -> Bindings[i];
         HIRValue *Value = Block -> Value;
         if (!Value)
             continue;
@@ -152,8 +152,8 @@ static void LError(LowerContext *Context, uint32_t Line, uint32_t Column, const 
 
 static HIRValue *LLookup(LowerContext *Context, const char *Name, uint32_t Line, uint32_t Column) {
     for (LowerScope *String = Context -> CurrentScope; String; String = String -> Parent) {
-        for (size_t I = 0; I < String -> Count; I++) {
-            LowerBinding *Block = &String -> Bindings[I];
+        for (size_t i = 0; i < String -> Count; i++) {
+            LowerBinding *Block = &String -> Bindings[i];
             if (strcmp(Block -> Name, Name) != 0)
                 continue;
 
@@ -202,8 +202,8 @@ static HIRValue *LLookup(LowerContext *Context, const char *Name, uint32_t Line,
         }
     }
 
-    for (size_t I = 0; I < Context -> Program -> GlobalCount; I++) {
-        HIRValue *Global = Context -> Program -> Globals[I];
+    for (size_t i = 0; i < Context -> Program -> GlobalCount; i++) {
+        HIRValue *Global = Context -> Program -> Globals[i];
 
         if (Global -> Name && strcmp(Global -> Name, Name) == 0)
             return Global;
@@ -236,8 +236,8 @@ static void LDeferRunAll(LowerContext *Context) {
 }
 
 static void LDeferRunForExit(LowerContext *Context, int MinDepth) {
-    for (int I = (int)Context -> DeferCount - 1; I >= 0; I--) {
-        if (Context -> DeferStack[I].ScopeDepth >= MinDepth) {
+    for (int i = (int)Context -> DeferCount - 1; i >= 0; i--) {
+        if (Context -> DeferStack[i].ScopeDepth >= MinDepth) {
             LEmit(Context, HIRInstDeferRun());
         }
     }
@@ -578,19 +578,24 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
 
         case EXPR_BINARY: {
             ASTBinaryExpression *Bin = &Expression -> Binary;
+ 
+            if (Expression -> Metadata.IsLValue) {
+                return LLowerMemberRead(Context, Bin -> Left, Bin -> Right, Line, Column);
+            }
+ 
             if (Bin -> IsAssignment) {
                 return LLowerAssignment(Context, Bin, Line, Column);
             }
-
-            HIRValue *Left = LowerExpression(Context, Bin -> Left);
+ 
+            HIRValue *Left  = LowerExpression(Context, Bin -> Left);
             HIRValue *Right = LowerExpression(Context, Bin -> Right);
             if (!Left || !Right)
                 return NULL;
-
+ 
             HIROpcode Op = LLowerBinOp(Bin -> Op);
             HIRType *ResultType = LIsBoolOp(Bin -> Op) ? HIRMakeBoolType() : (Left -> Type ? Left -> Type : HIRMakeIntType());
             HIRValue *Destination = LMakeTemp(Context, ResultType);
-
+ 
             LEmit(Context, HIRInstBinary(Op, Destination, Left, Right));
 
             return Destination;
@@ -636,9 +641,9 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
 
             HIRValue **Arguments = calloc(Call -> ArgumentCount, sizeof(HIRValue *));
             
-            for (size_t I = 0; I < Call -> ArgumentCount; I++) {
-                Arguments[I] = LowerExpression(Context, Call -> Arguments[I]);
-                if (!Arguments[I]) {
+            for (size_t i = 0; i < Call -> ArgumentCount; i++) {
+                Arguments[i] = LowerExpression(Context, Call -> Arguments[i]);
+                if (!Arguments[i]) {
                     free(Arguments);
 
                     return NULL;
@@ -673,12 +678,12 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
 
             LEmit(Context, HIRInstArrayAlloc(ArrayValue, ElementType, SizeTemp));
 
-            for (size_t I = 0; I < Array -> Count; I++) {
-                HIRValue *Element = LowerExpression(Context, Array -> Elements[I]);
+            for (size_t i = 0; i < Array -> Count; i++) {
+                HIRValue *Element = LowerExpression(Context, Array -> Elements[i]);
                 if (!Element)
                     continue;
 
-                HIRValue *IndexConstant = HIRCreateIntConst((int64_t)I, HIRMakeIntType());
+                HIRValue *IndexConstant = HIRCreateIntConst((int64_t)i, HIRMakeIntType());
                 HIRValue *IndexType = LMakeTemp(Context, HIRMakeIntType());
 
                 LEmit(Context, HIRInstConst(IndexType, IndexConstant));
@@ -718,94 +723,191 @@ HIRValue *LowerExpression(LowerContext *Context, ASTExpression *Expression) {
     }
 }
 
+static HIRValue *LLowerMemberRead(LowerContext *Context, ASTExpression *ObjectExpression, ASTExpression *FieldExpression, uint32_t Line, uint32_t Column) {
+    const char *FieldName = NULL;
+    if (FieldExpression && FieldExpression -> Kind == EXPR_IDENTIFIER)
+        FieldName = FieldExpression -> Identifier;
+ 
+    if (ObjectExpression -> Kind == EXPR_IDENTIFIER && strcmp(ObjectExpression -> Identifier, "sys") == 0) {
+        HIRValue *Destination = LMakeTemp(Context, HIRMakeIntType());
+
+        LEmit(Context, HIRInstSysQuery(Destination, FieldName ? FieldName : "?"));
+
+        return Destination;
+    }
+ 
+    HIRValue *Object = LowerExpression(Context, ObjectExpression);
+    if (!Object)
+        return NULL;
+ 
+    if (FieldName && strcmp(FieldName, "len") == 0) {
+        HIRValue *Destination = LMakeTemp(Context, HIRMakeIntType());
+
+        LEmit(Context, HIRInstArrayLen(Destination, Object));
+
+        return Destination;
+    }
+    
+    if (FieldName && strcmp(FieldName, "source") == 0) {
+        HIRType *PointerType = HIRMakePtrType(HIRMakeStringType());
+        HIRValue *Destination = LMakeTemp(Context, PointerType);
+
+        LEmit(Context, HIRInstLoad(Destination, Object));
+
+        return Destination;
+    }
+ 
+    HIRType *FieldType = HIRMakeVoidType();
+    HIRValue *Destination = LMakeTemp(Context, FieldType);
+
+    LEmit(Context, HIRInstStructField(Destination, Object, FieldName ? FieldName : "?"));
+
+    return Destination;
+}
+ 
+static int LLowerMemberWrite(LowerContext *Context, ASTExpression *ObjectExpression, ASTExpression *FieldExpression, HIRValue *RHS, uint32_t Line, uint32_t Column) {
+    const char *FieldName = NULL;
+
+    if (FieldExpression && FieldExpression -> Kind == EXPR_IDENTIFIER)
+        FieldName = FieldExpression -> Identifier;
+ 
+    if (ObjectExpression -> Kind == EXPR_IDENTIFIER &&
+        strcmp(ObjectExpression -> Identifier, "sys") == 0) {
+        LError(Context, Line, Column, "cannot assign to sys variable '%s'", FieldName ? FieldName : "?");
+
+        return 0;
+    }
+ 
+    HIRValue *Object = LowerExpression(Context, ObjectExpression);
+    if (!Object)
+        return 0;
+ 
+    LEmit(Context, HIRInstStructSet(Object, FieldName ? FieldName : "?", RHS));
+
+    return 1;
+}
+
 static HIRValue *LLowerAssignment(LowerContext *Context, ASTBinaryExpression *Bin, uint32_t Line, uint32_t Column) {
     HIRValue *RHS = LowerExpression(Context, Bin -> Right);
     if (!RHS)
         return NULL;
-
+ 
     ASTExpression *LHSExpression = Bin -> Left;
-
+ 
     if (LHSExpression -> Kind == EXPR_IDENTIFIER) {
         const char *Name   = LHSExpression -> Identifier;
 
         HIRValue *Target = LLookup(Context, Name, Line, Column);
-        if (!Target)
-            return NULL;
+ 
+        if (!Target) {
+            Context -> HasError = 0;
+            Context -> DiagCount--;
+ 
+            HIRType *InferredType = RHS -> Type ? RHS -> Type : HIRMakeVoidType();
+ 
+            Target = HIRCreateVar(Name, InferredType, HIR_MOD_NONE);
 
+            Target -> ScopeID = Context -> CurrentScope ? Context -> CurrentScope -> ID : 0;
+            Target -> Ownership.Kind = HIR_OWN_MOVE;
+ 
+            LBind(Context, Name, Target);
+ 
+            if (Context -> CurrentFunction) {
+                HIRFunction *Function = Context -> CurrentFunction;
+
+                Function -> Locals = realloc(Function -> Locals, (Function -> LocalCount + 1) * sizeof(HIRValue *));
+                Function -> Locals[Function -> LocalCount++] = Target;
+            }
+        }
+ 
         if (Target -> Modifiers & HIR_MOD_CONST) {
             LError(Context, Line, Column, "cannot assign to const variable '%s'", Name);
 
             return NULL;
         }
-
+ 
         if (Target -> Ownership.IsBorrowed) {
             LError(Context, Line, Column, "cannot assign to '%s' while it is borrowed", Name);
 
             return NULL;
         }
-        
+ 
         HIRValue *NewValue = RHS;
-
+ 
         if (Bin -> Op != OP_EQ) {
-            HIROpcode BinOp  = LLowerBinOp(Bin -> Op);
-            HIRType *ResultType  = Target -> Type ? Target -> Type : HIRMakeIntType();
-            HIRValue *OldValue = Target;
+            HIROpcode BinOp = LLowerBinOp(Bin -> Op);
+            HIRType *ResultType = Target -> Type ? Target -> Type : HIRMakeIntType();
 
             NewValue = LMakeTemp(Context, ResultType);
-
-            LEmit(Context, HIRInstBinary(BinOp, NewValue, OldValue, RHS));
+ 
+            LEmit(Context, HIRInstBinary(BinOp, NewValue, Target, RHS));
         }
-
+ 
         LEmit(Context, HIRInstMove(Target, NewValue));
-
-        if (Target -> Modifiers & HIR_MOD_HISTORY) {
+ 
+        if (Target -> Modifiers & HIR_MOD_HISTORY)
             LEmit(Context, HIRInstHistorySnap(Target));
-        }
-
+ 
         LTrailPropagate(Context, Target);
-
-        if (Target -> DependentCount > 0) {
+ 
+        if (Target -> DependentCount > 0)
             LEmit(Context, HIRInstReactiveUpdate(Target));
-        }
-
+ 
         return Target;
     }
 
-    else if (LHSExpression -> Kind == EXPR_INDEX) {
+    if (LHSExpression -> Kind == EXPR_INDEX) {
         HIRValue *ArrayValue = LowerExpression(Context, LHSExpression -> Index.Target);
         HIRValue *IndexValue = LowerExpression(Context, LHSExpression -> Index.Index);
         if (!ArrayValue || !IndexValue)
             return NULL;
-
+ 
         HIRType *ElementType = (ArrayValue -> Type && ArrayValue -> Type -> ElementType) ? ArrayValue -> Type -> ElementType : HIRMakeVoidType();
-        HIRType *PointerType  = HIRMakePtrType(ElementType);
-        HIRValue *ElementPointer = LMakeTemp(Context, PointerType);
-
+        HIRValue *ElementPointer = LMakeTemp(Context, HIRMakePtrType(ElementType));
+ 
         LEmit(Context, HIRInstArrayIndex(ElementPointer, ArrayValue, IndexValue));
-
+ 
         HIRValue *FinalValue = RHS;
         if (Bin -> Op != OP_EQ) {
-            HIRValue *OldElem = LMakeTemp(Context, ElementType);
-
-            LEmit(Context, HIRInstLoad(OldElem, ElementPointer));
-
+            HIRValue *OldElement = LMakeTemp(Context, ElementType);
             HIROpcode BinOp = LLowerBinOp(Bin -> Op);
-
+ 
+            LEmit(Context, HIRInstLoad(OldElement, ElementPointer));
+ 
             FinalValue = LMakeTemp(Context, ElementType);
-
-            LEmit(Context, HIRInstBinary(BinOp, FinalValue, OldElem, RHS));
+ 
+            LEmit(Context, HIRInstBinary(BinOp, FinalValue, OldElement, RHS));
         }
-
+ 
         LEmit(Context, HIRInstStore(ElementPointer, FinalValue));
 
         return FinalValue;
     }
+ 
+    if (LHSExpression -> Kind == EXPR_BINARY && LHSExpression -> Metadata.IsLValue) {
 
-    else {
-        LError(Context, Line, Column, "invalid assignment target");
+        HIRValue *FinalValue = RHS;
+        if (Bin -> Op != OP_EQ) {
+            HIRValue *OldValue = LLowerMemberRead(Context, LHSExpression -> Binary.Left, LHSExpression -> Binary.Right, Line, Column);
+            if (!OldValue)
+                return NULL;
+ 
+            HIROpcode BinOp = LLowerBinOp(Bin -> Op);
+            HIRType *RT = OldValue -> Type ? OldValue -> Type : HIRMakeIntType();
+ 
+            FinalValue = LMakeTemp(Context, RT);
+ 
+            LEmit(Context, HIRInstBinary(BinOp, FinalValue, OldValue, RHS));
+        }
+ 
+        LLowerMemberWrite(Context, LHSExpression -> Binary.Left, LHSExpression -> Binary.Right, FinalValue, Line, Column);
 
-        return NULL;
+        return FinalValue;
     }
+ 
+    LError(Context, Line, Column, "invalid assignment target");
+
+    return NULL;
 }
 
 static HIRPattern *LLowerPattern(LowerContext *Context, ASTExpression *PatternExpression, ASTExpression *GuardExpression) {
@@ -845,8 +947,8 @@ static HIRPattern *LLowerPattern(LowerContext *Context, ASTExpression *PatternEx
             ASTArrayExpression *Array = &PatternExpression -> Array;
             HIRPattern **Elements = calloc(Array -> Count, sizeof(HIRPattern *));
 
-            for (size_t I = 0; I < Array -> Count; I++) {
-                Elements[I] = LLowerPattern(Context, Array -> Elements[I], NULL);
+            for (size_t i = 0; i < Array -> Count; i++) {
+                Elements[i] = LLowerPattern(Context, Array -> Elements[i], NULL);
             }
 
             BasePattern = HIRPatternTuple(Elements, Array -> Count);
@@ -886,9 +988,9 @@ static void LLowerMatch(LowerContext *Context, ASTStatement *Statement) {
 
     const char **TestLabels = calloc(ArmCount + 1, sizeof(const char *));
     const char **BodyLabels = calloc(ArmCount, sizeof(const char *));
-    for (size_t I = 0; I < ArmCount; I++) {
-        TestLabels[I] = LGenLabel(Context, "mat_tst");
-        BodyLabels[I] = LGenLabel(Context, "mat_arm");
+    for (size_t i = 0; i < ArmCount; i++) {
+        TestLabels[i] = LGenLabel(Context, "mat_tst");
+        BodyLabels[i] = LGenLabel(Context, "mat_arm");
     }
 
     TestLabels[ArmCount] = EndLabel;
@@ -896,19 +998,19 @@ static void LLowerMatch(LowerContext *Context, ASTStatement *Statement) {
     HIRBlock *PreviousBlock  = Context -> CurrentBlock;
     int HasCatchAll = 0;
 
-    for (size_t I = 0; I < ArmCount; I++) {
-        ASTMatchArm *Arm = &Arms[I];
+    for (size_t i = 0; i < ArmCount; i++) {
+        ASTMatchArm *Arm = &Arms[i];
         HIRPattern *Pattern = LLowerPattern(Context, Arm -> Pattern, Arm -> Guard);
 
         if (Pattern -> Kind == HIR_PAT_VARIABLE || Pattern -> Kind == HIR_PAT_WILDCARD || Pattern -> Kind == HIR_PAT_NONE) {
             HasCatchAll = 1;
         }
 
-        HIRInstruction *Test = HIRInstMatchArmTest(Pattern, BodyLabels[I], TestLabels[I + 1]);
+        HIRInstruction *Test = HIRInstMatchArmTest(Pattern, BodyLabels[i], TestLabels[i + 1]);
 
         LEmit(Context, Test);
 
-        HIRBlock *BodyBlock = LNewBlock(Context, BodyLabels[I]);
+        HIRBlock *BodyBlock = LNewBlock(Context, BodyLabels[i]);
 
         BodyBlock -> IsMatchArm = 1;
 
@@ -926,7 +1028,7 @@ static void LLowerMatch(LowerContext *Context, ASTStatement *Statement) {
         }
 
         if (Pattern -> Kind == HIR_PAT_GUARD && Pattern -> Guard) {
-            LEmit(Context, HIRInstMatchGuard(Pattern -> Guard, TestLabels[I + 1]));
+            LEmit(Context, HIRInstMatchGuard(Pattern -> Guard, TestLabels[i + 1]));
         }
 
         if (Pattern -> Kind == HIR_PAT_TUPLE) {
@@ -957,8 +1059,8 @@ static void LLowerMatch(LowerContext *Context, ASTStatement *Statement) {
         HIRBlock *AfterArm = Context -> CurrentBlock;
         LEmit(Context, HIRInstJmp(EndLabel));
 
-        if (I + 1 < ArmCount) {
-            HIRBlock *NextTest = LNewBlock(Context, TestLabels[I + 1]);
+        if (i + 1 < ArmCount) {
+            HIRBlock *NextTest = LNewBlock(Context, TestLabels[i + 1]);
 
             LCFGEdge(AfterArm, NextTest);
 
@@ -1058,31 +1160,52 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
             break;
         }
 
+        case STMT_ENUM_DECL:
+        case STMT_STATE_DECL: {
+            uint32_t ConstModifiers = HIR_MOD_CONST | HIR_MOD_GLOBAL;
+    
+            for (size_t V = 0; V < Statement -> EnumDecl.VariantCount; V++) {
+                const char *VariantName = Statement -> EnumDecl.Variants[V];
+
+                HIRType *TagType = HIRMakeIntType();
+                HIRValue *Variant = HIRCreateVar(VariantName, TagType, ConstModifiers);
+    
+                Variant -> IntValue = (int64_t) V;
+                Variant -> Ownership.Kind = HIR_OWN_IMPLICIT;
+    
+                HIRAddGlobal(Context -> Program, Variant);
+
+                LBind(Context, VariantName, Variant);
+            }
+    
+            break;
+        }
+
         case STMT_ASSIGN: {
             ASTExpression *LHSExpression = Statement -> Assign.Target;
             ASTExpression *RHSExpression = Statement -> Assign.Value;
-
+    
             HIRValue *Value = LowerExpression(Context, RHSExpression);
             if (!Value)
                 break;
-
+    
             if (LHSExpression -> Kind == EXPR_IDENTIFIER) {
                 const char *Name   = LHSExpression -> Identifier;
 
-                HIRValue *Target = LLookup(Context, Name, 0, 0);
+                HIRValue  *Target = LLookup(Context, Name, 0, 0);
+    
                 if (!Target) {
                     Context -> HasError = 0;
                     Context -> DiagCount--;
-
-                    HIRType *InferredType = Value->Type ? Value->Type : HIRMakeVoidType();
-
+    
+                    HIRType *InferredType = Value -> Type ? Value -> Type : HIRMakeVoidType();
+    
                     Target = HIRCreateVar(Name, InferredType, HIR_MOD_NONE);
-                    
-                    Target -> ScopeID = Context->CurrentScope ? Context->CurrentScope->ID : 0;
+                    Target -> ScopeID = Context -> CurrentScope ? Context -> CurrentScope -> ID : 0;
                     Target -> Ownership.Kind = HIR_OWN_MOVE;
-
+    
                     LBind(Context, Name, Target);
-
+    
                     if (Context -> CurrentFunction) {
                         HIRFunction *Function = Context -> CurrentFunction;
 
@@ -1090,48 +1213,48 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
                         Function -> Locals[Function -> LocalCount++] = Target;
                     }
                 }
-
+    
                 if (Target -> Modifiers & HIR_MOD_CONST) {
                     LError(Context, 0, 0, "cannot assign to const '%s'", Name);
 
                     break;
                 }
-
+    
                 if (Target -> Ownership.IsBorrowed) {
                     LError(Context, 0, 0, "cannot assign to '%s' while it is borrowed", Name);
 
                     break;
                 }
-
+    
                 LEmit(Context, HIRInstMove(Target, Value));
-
-                if (Target -> Modifiers & HIR_MOD_HISTORY) {
+    
+                if (Target -> Modifiers & HIR_MOD_HISTORY)
                     LEmit(Context, HIRInstHistorySnap(Target));
-                }
-
+    
                 LTrailPropagate(Context, Target);
-
-                if (Target -> DependentCount > 0) {
+    
+                if (Target -> DependentCount > 0)
                     LEmit(Context, HIRInstReactiveUpdate(Target));
-                }
+    
             } else if (LHSExpression -> Kind == EXPR_INDEX) {
                 HIRValue *ArrayValue = LowerExpression(Context, LHSExpression -> Index.Target);
                 HIRValue *IndexValue = LowerExpression(Context, LHSExpression -> Index.Index);
-                if (!ArrayValue || !IndexValue)
+                if (!ArrayValue || !IndexValue) 
                     break;
-
-                HIRType *ElementType = (ArrayValue -> Type && ArrayValue -> Type -> ElementType) ? ArrayValue -> Type -> ElementType : HIRMakeVoidType();
+    
+                HIRType *ElementType   = (ArrayValue -> Type && ArrayValue -> Type -> ElementType) ? ArrayValue -> Type -> ElementType : HIRMakeVoidType();
                 HIRValue *ElementPointer = LMakeTemp(Context, HIRMakePtrType(ElementType));
-
+    
                 LEmit(Context, HIRInstArrayIndex(ElementPointer, ArrayValue, IndexValue));
                 LEmit(Context, HIRInstStore(ElementPointer, Value));
-
+            } else if (LHSExpression -> Kind == EXPR_BINARY && LHSExpression -> Metadata.IsLValue) {
+                LLowerMemberWrite(Context, LHSExpression -> Binary.Left, LHSExpression -> Binary.Right, Value, 0, 0);
             } else {
                 LError(Context, 0, 0, "invalid assignment target");
             }
-
+    
             break;
-        }
+    }
 
         case STMT_IF: {
             HIRValue *Condition = LowerExpression(Context, Statement -> If.Condition);
@@ -1151,8 +1274,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
             LCFGEdge(ConditionBlock, ThenBlock);
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> If.ThenCount; I++) {
-                LowerStatement(Context, Statement -> If.ThenBlock[I]);
+            for (size_t i = 0; i < Statement -> If.ThenCount; i++) {
+                LowerStatement(Context, Statement -> If.ThenBlock[i]);
             }
 
             LPopScope(Context);
@@ -1168,8 +1291,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
                 LCFGEdge(ConditionBlock, ElseBlock);
                 LPushScope(Context);
 
-                for (size_t I = 0; I < Statement -> If.ElseCount; I++) {
-                    LowerStatement(Context, Statement -> If.ElseBlock[I]);
+                for (size_t i = 0; i < Statement -> If.ElseCount; i++) {
+                    LowerStatement(Context, Statement -> If.ElseBlock[i]);
                 }
 
                 LPopScope(Context);
@@ -1214,8 +1337,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
             LPushLoop(Context, HdrLabel, ExitLabel);
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> While.Count; I++) {
-                LowerStatement(Context, Statement -> While.Body[I]);
+            for (size_t i = 0; i < Statement -> While.Count; i++) {
+                LowerStatement(Context, Statement -> While.Body[i]);
             }
 
             LPopScope(Context);
@@ -1280,8 +1403,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
             LPushLoop(Context, HdrLabel, ExitLabel);
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> For.Count; I++) {
-                LowerStatement(Context, Statement -> For.Body[I]);
+            for (size_t i = 0; i < Statement -> For.Count; i++) {
+                LowerStatement(Context, Statement -> For.Body[i]);
             }
 
             LPopScope(Context);
@@ -1354,8 +1477,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
         case STMT_BLOCK: {
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> Block.Count; I++) {
-                LowerStatement(Context, Statement -> Block.Statements[I]);
+            for (size_t i = 0; i < Statement -> Block.Count; i++) {
+                LowerStatement(Context, Statement -> Block.Statements[i]);
             }
 
             LPopScope(Context);
@@ -1377,8 +1500,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
 
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> ScopedBlock.Count; I++) {
-                LowerStatement(Context, Statement -> ScopedBlock.Body[I]);
+            for (size_t i = 0; i < Statement -> ScopedBlock.Count; i++) {
+                LowerStatement(Context, Statement -> ScopedBlock.Body[i]);
             }
 
             LPopScope(Context);
@@ -1400,8 +1523,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
 
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> ScopedBlock.Count; I++) {
-                LowerStatement(Context, Statement -> ScopedBlock.Body[I]);
+            for (size_t i = 0; i < Statement -> ScopedBlock.Count; i++) {
+                LowerStatement(Context, Statement -> ScopedBlock.Body[i]);
             }
 
             LPopScope(Context);
@@ -1420,8 +1543,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
 
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> ScopedBlock.Count; I++) {
-                LowerStatement(Context, Statement -> ScopedBlock.Body[I]);
+            for (size_t i = 0; i < Statement -> ScopedBlock.Count; i++) {
+                LowerStatement(Context, Statement -> ScopedBlock.Body[i]);
             }
 
             LPopScope(Context);
@@ -1473,8 +1596,8 @@ void LowerStatement(LowerContext *Context, ASTStatement *Statement) {
 
             LPushScope(Context);
 
-            for (size_t I = 0; I < Statement -> Defer.Count; I++) {
-                LowerStatement(Context, Statement -> Defer.Body[I]);
+            for (size_t i = 0; i < Statement -> Defer.Count; i++) {
+                LowerStatement(Context, Statement -> Defer.Body[i]);
             }
 
             LPopScope(Context);
@@ -1514,8 +1637,8 @@ HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram) {
     LNewBlock(Context, EntryLabel);
     LPushScope(Context);
 
-    for (size_t I = 0; I < Subprogram -> ParameterCount; I++) {
-        ASTParam *Paremeters = &Subprogram -> Parameters[I];
+    for (size_t i = 0; i < Subprogram -> ParameterCount; i++) {
+        ASTParam *Paremeters = &Subprogram -> Parameters[i];
         HIRType *ParemeterType = LowerType(Paremeters -> Type);
         HIRValue *ParameterValue  = HIRCreateParam(Paremeters -> Name, ParemeterType);
 
@@ -1527,8 +1650,8 @@ HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram) {
         LBind(Context, Paremeters -> Name, ParameterValue);
     }
 
-    for (size_t I = 0; I < Subprogram -> RequireCount; I++) {
-        ASTEnvironment *Environment  = &Subprogram -> Requires[I];
+    for (size_t i = 0; i < Subprogram -> RequireCount; i++) {
+        ASTEnvironment *Environment  = &Subprogram -> Requires[i];
         HIREnvironment *HEnvironment = calloc(1, sizeof(HIREnvironment));
 
         HEnvironment -> Name = Environment -> Name;
@@ -1537,8 +1660,8 @@ HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram) {
         LEmit(Context, HIRInstEnvRequire(Environment -> Name));
     }
 
-    for (size_t I = 0; I < Subprogram -> ProvideCount; I++) {
-        ASTEnvironment *Environment  = &Subprogram -> Provides[I];
+    for (size_t i = 0; i < Subprogram -> ProvideCount; i++) {
+        ASTEnvironment *Environment  = &Subprogram -> Provides[i];
         HIREnvironment *HEnvironment = calloc(1, sizeof(HIREnvironment));
 
         HEnvironment -> Name = Environment -> Name;
@@ -1554,8 +1677,8 @@ HIRFunction *LowerSubprogram(LowerContext *Context, ASTSubprogram *Subprogram) {
         LEmit(Context, HIRInstEnvProvide(Environment -> Name, EnvironmentValue));
     }
 
-    for (size_t I = 0; I < Subprogram -> BodyCount; I++) {
-        LowerStatement(Context, Subprogram -> Body[I]);
+    for (size_t i = 0; i < Subprogram -> BodyCount; i++) {
+        LowerStatement(Context, Subprogram -> Body[i]);
     }
 
     {
@@ -1597,16 +1720,16 @@ void LowerProgram(LowerContext *Context, ASTProgram *Program) {
         LNewBlock(Context, LGenLabel(Context, "init_entry"));
         LPushScope(Context);
 
-        for (size_t I = 0; I < Program -> StatementCount; I++) {
-            ASTStatement *Statement = Program -> Statements[I];
+        for (size_t i = 0; i < Program -> StatementCount; i++) {
+            ASTStatement *Statement = Program -> Statements[i];
             if (!Statement)
                 continue;
 
             (void) Statement;
         }
 
-        for (size_t I = 0; I < Program -> StatementCount; I++) {
-            LowerStatement(Context, Program -> Statements[I]);
+        for (size_t i = 0; i < Program -> StatementCount; i++) {
+            LowerStatement(Context, Program -> Statements[i]);
         }
 
         LDeferRunAll(Context);
@@ -1618,8 +1741,8 @@ void LowerProgram(LowerContext *Context, ASTProgram *Program) {
         HIRAddFunction(Context -> Program, InitializeFunction);
     }
 
-    for (size_t I = 0; I < Program -> MacroCount; I++) {
-        ASTMacro *Macro  = Program -> Macros[I];
+    for (size_t i = 0; i < Program -> MacroCount; i++) {
+        ASTMacro *Macro  = Program -> Macros[i];
         HIRType *VoidType = HIRMakeVoidType();
 
         HIRFunction *MacroFunction  = HIRCreateFunction(Macro -> Name, VoidType);
@@ -1656,8 +1779,8 @@ void LowerProgram(LowerContext *Context, ASTProgram *Program) {
         HIRAddFunction(Context -> Program, MacroFunction);
     }
 
-    for (size_t I = 0; I < Program -> SubprogramCount; I++) {
-        ASTSubprogram *Subprogram = Program -> Subprograms[I];
+    for (size_t i = 0; i < Program -> SubprogramCount; i++) {
+        ASTSubprogram *Subprogram = Program -> Subprograms[i];
         HIRFunction *Function  = LowerSubprogram(Context, Subprogram);
 
         if (strcmp(Subprogram -> Name, "main") == 0) {
@@ -1693,8 +1816,8 @@ void LowerDestroyContext(LowerContext *Context) {
         Entry = Next;
     }
 
-    for (size_t I = 0; I < Context -> DiagCount; I++) {
-        free((char *)Context -> Diagnostics[I].Message);
+    for (size_t i = 0; i < Context -> DiagCount; i++) {
+        free((char *)Context -> Diagnostics[i].Message);
     }
 
     free(Context -> Diagnostics);
@@ -1747,8 +1870,8 @@ void LowerPrintDiagnostics(LowerContext *Context) {
     if (!Context)
         return;
 
-    for (size_t I = 0; I < Context -> DiagCount; I++) {
-        LowerDiagnostic *Diagnostic = &Context -> Diagnostics[I];
+    for (size_t i = 0; i < Context -> DiagCount; i++) {
+        LowerDiagnostic *Diagnostic = &Context -> Diagnostics[i];
         
         const char *KindString = Diagnostic -> Kind == LOWER_DIAG_ERROR   ? "ERROR"   : Diagnostic -> Kind == LOWER_DIAG_WARNING ? "WARNING" : "Note";
         
