@@ -2,7 +2,7 @@
 
     Copyright 2026 © AveriC
 
-    Koboi Standardized Syntax Version 0.3b06
+    Koboi Standardized Syntax Version 0.3b07
 
     This is the DUMP file for Koboi. This means that it is a DUMP of all features of Koboi, to keep track of what it has, capabilities, etc.
     This file is NOT compilable for standard Koboi, & WILL error; all shown cases of runtime situations (c += 1), does NOT work, as not inside of a function/callable context.
@@ -225,10 +225,9 @@ macro repeat(LOOPS, BODY) {
     }
 }
 
-object Car {
-    fn IncrementYear(Year) {
-        Year += 1
-    }
+object Vehicle {
+    // Forward declaration
+    fn IncrementYear(Years)
 
     public {
         Model : String
@@ -237,12 +236,33 @@ object Car {
         Age : int
 
         fn CreateInformation(Name : String, Company : String) {
-            Model = Name
-            Brand = Company
+            self.Model = Name
+            self.Brand = Company
 
-            Age = 0
+            self.Age = 0
 
-            IncrementYear(Age)
+            self.IncrementYear(1)
+        }
+
+        // Special function in Koboi & objects, allowing for the call of the object name, this case, Vehicle(NAME, COMPANY, AGE)
+        object fn Initialize(Name : String, Company : String, Age : int) {
+            self.CreateInformation(Name, Company)
+
+            self.Age = Age
+        }
+    }
+
+    fn IncrementYear(Years) {
+        self.Age += Years
+    }
+}
+
+object Car extends Vehicle {
+    public {
+        Seats : int
+
+        fn CreateSeats(Count : int) {
+            self.Seats = Count
         }
     }
 }
@@ -250,6 +270,9 @@ object Car {
 Car Hyjiuo
 
 Hyjiuo:CreateInformation("Hyjiuo", "Hyjiru")
+
+Vehicle Hyjiuo2 = Vehicle("Hyjiuo 2.0", "Hyjiru", 3)
+Vehicle Hyjiuo3 = &Hyjiuo2 // SAME as standard ownership system; objects are not meant to be a first-class, but still of high-usage; as for nearly all Koboi programs before were perfectly fine & still short without objects, don't want to overcomplicate everything now...
 
 Result _Result = OK
 
