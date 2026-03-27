@@ -55,4 +55,41 @@ One of the main usages of Pako is creating projects, to bundle source for Koboi 
 ### 1.3.0 Getting Started
 #### 1.3.1 Creating your first program
 
-The Koboi programming language uses the `.kb` file format. Examples of all basic-intermediate examples that are single-file or standard library dependencies will use KoboiC. The Koboi programming language uses `main`, to start off a program, unless explicitly stated to be top-down
+The Koboi programming language uses the `.kb` file format. Examples of all basic-intermediate examples that are single-file or standard library dependencies will use KoboiC. The Koboi programming language uses `main`, to start off a program, but simple examples will purely show dumps.
+
+One of the only native functions in Koboi is `print`, although `pln` via the **IO** library is standard. To make a function, needed to initialize the entry point, `main`, is `fn`, for function, followed up by the name of the function. Arguments in a function can be implicit or explicit; main functions generally don't require them, but are good for cases of software like CLIs. A simple **Hello World**, is like so:
+
+```rs
+fn main() {
+    print("Hello, World!")
+}
+```
+
+#### 1.3.2 Project Structure
+
+The project structure in Koboi is simple; assuming the usage of **Pako**, the Koboi project manager, via `pako new <PROJECT_NAME>`, you'd get a file structure, similar to so:
+
+```
+ROOT/
+  PRJ_NAME/
+    kipd.kdf - Koboi Information Package Data, Koboi Datafile
+    src/
+      main.kb
+```
+
+The KIPD file contains information on the compiler, compilation type, flags of use, etc. The KDF file format is a format made for the Koboi programming language, & is interpreted via the compiler.
+
+#### 1.3.3 Building & Running
+
+The build of a project in Koboi varies, via source compilation, project compilation, wrapper compilation, & systems compilation. The building of source compilation is via KoboiC, but can be accessible from **Pako**/**Sendo**, `koboic main.kb -o main`, `pako run main.kb`, sendo, being: `pako build --no-finalize` & `sendo finalize build/app --target windows`.
+
+Sendo is the shipping manager for Koboi, wrapped over Pako, by default, as an easy way to build projects. To run projects, Koboi by default compiles to an executable for you, but to purely run, without compilation, you can use `run`, from Pako, on-top of build, `pako run build`, to emphasize the project, via build, & to say to run it, not build.
+
+#### 1.3.4 Standard Libraries
+
+in dev
+
+### 1.4.0 Basics
+#### 1.4.1 Initializing variables
+
+To initialize variables in Koboi, 

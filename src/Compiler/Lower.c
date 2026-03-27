@@ -7,11 +7,17 @@
 
 #include "Lower.h"
 
+static HIRValue *LLowerAssignment(LowerContext *Context, ASTBinaryExpression *Bin, uint32_t Line, uint32_t Column);
+static HIRValue *LLowerMemberRead(LowerContext *Context, ASTExpression *ObjectExpression, ASTExpression *FieldExpression, uint32_t Line, uint32_t Column);
+
 static const char *LStrDup(const char *String) {
-    if (!String) return NULL;
+    if (!String)
+        return NULL;
 
     size_t Len = strlen(String) + 1;
     char *Out = malloc(Len);
+    if (!Out)
+        return NULL;
 
     memcpy(Out, String, Len);
 
@@ -54,12 +60,12 @@ static HIRBlock *LNewBlock(LowerContext *Context, const char *LabelHint) {
     return Block;
 }
 
-static void LCFGEdge(HIRBlock *Pred, HIRBlock *Succ) {
-    Pred -> Successors = realloc(Pred -> Successors, (Pred -> SuccessorCount + 1) * sizeof(HIRBlock *));
-    Pred -> Successors[Pred -> SuccessorCount++] = Succ;
+static void LCFGEdge(HIRBlock *Predecessors, HIRBlock *Successors) {
+    Predecessors -> Successors = realloc(Predecessors -> Successors, (Predecessors -> SuccessorCount + 1) * sizeof(HIRBlock *));
+    Predecessors -> Successors[Predecessors -> SuccessorCount++] = Successors;
 
-    Succ -> Predecessors = realloc(Succ -> Predecessors, (Succ -> PredecessorCount + 1) * sizeof(HIRBlock *));
-    Succ -> Predecessors[Succ -> PredecessorCount++] = Pred;
+    Successors -> Predecessors = realloc(Successors -> Predecessors, (Successors -> PredecessorCount + 1) * sizeof(HIRBlock *));
+    Successors -> Predecessors[Successors -> PredecessorCount++] = Predecessors;
 }
 
 static HIRSafetyLevel LCurrentSafety(LowerContext *Context) {
@@ -222,7 +228,10 @@ static void LDeferRegister(LowerContext *Context, HIRInstruction **Body, size_t 
 
     LowerDeferEntry *Entry  = &Context -> DeferStack[Context -> DeferCount++];
 
-    Entry -> Body = Body;
+    Entry -> Body = malloc(Count * sizeof(HIRInstruction *));
+
+    memcpy(Entry -> Body, Body, Count * sizeof(HIRInstruction *));
+
     Entry -> Count = Count;
     Entry -> ScopeDepth = Context -> CurrentScope ? Context -> CurrentScope -> Depth : 0;
 

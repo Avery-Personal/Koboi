@@ -1187,8 +1187,8 @@ void HIRPrintInstruction(const HIRInstruction *Instruction) {
     if (Instruction -> CallTarget) {
         printf("  @%s(", Instruction -> CallTarget);
 
-        for (size_t i = 0; i < Instruction -> ArgCount; Instruction++) {
-            if (Instruction > 0)
+        for (size_t i = 0; i < Instruction -> ArgCount; i++) {
+            if (i > 0)
                 printf(", ");
 
             HIRPrintValue(Instruction -> Args[i]);
