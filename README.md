@@ -4,7 +4,7 @@ This is the main source code repository for [Koboi], containing the compiler, st
 
 # What is Koboi?
 
-Koboi is a medium-level programming language made by **AveriC**, designed for absolute safety & control.
+Koboi is a medium-level programming language made & developed by **AveriC**, designed for absolute safety & control.
 
 # Why Koboi?
 
@@ -39,3 +39,68 @@ The `assume` mode on Koboi, as expressed by `assume` keyword, is a way to pass i
 The `unsafe` mode on Koboi, as expressed by `unsafe` keyword, is the second most unsafe mode on the compiler, running no compiler-based checks outside of mandatory semantic checks, I.E data type.
 
 The `trusted unsafe` mode on Koboi, as expressed by `trusted unsafe` keyword(s), is the most unsafe mode on the compiler, running no compiler-based checks outside of mandatory semantic checks, I.E data types; environments are allowed to be bypassed via this mode, and this mode only.
+
+# Example Programs
+
+## Hello World
+
+```rs
+fn main() {
+    print("Hello, World!")
+}
+```
+
+## Counter
+
+```rs
+using std::io
+
+module Counter {
+    export static Count = 0
+
+    export fn Increment() {
+        Count += 1
+    }
+}
+
+fn main() {
+    while Counter::Count < 5 {
+        pln("Count:", Counter::Count)
+
+        Counter::Increment()
+    }
+}
+```
+
+## Matches
+
+```rs
+using std::io
+
+enum Result {
+    OK,
+    ERROR,
+
+    OTHER
+}
+
+Result __RESULT__ = OK
+
+fn main() {
+    Point : [int, 2] = {2, 7}
+
+    match Point {
+        (0, 0) >> pln("Origin"),
+        (x, 0) >> pln("X-axis:", x),
+        (0, y) >> pln("Y-axis:", y),
+        (x, y) >> pln("Point:", x, y)
+    }
+
+    match __RESULT__ {
+        OK >> pln("Expected result"),
+        ERROR >> pln("Unexpected result"),
+
+        v >> pln("Unknown result")
+    }
+}
+```
