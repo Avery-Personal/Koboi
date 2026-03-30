@@ -101,7 +101,7 @@
     typedef struct {
         SSOp Op;
 
-        SSOperand Destinatio;
+        SSOperand Destination;
         SSOperand Source1;
         SSOperand Source2;
 
@@ -111,9 +111,31 @@
 
     typedef struct {
         SSInstruction *Instructions;
-        
+
         size_t Count;
         size_t Capacity;
     } SSProgram;
+
+    static SSOp OpFromAST(ASTOperator Op);
+    
+    static SSOperand MakeVariable(const char *Name);
+    static SSOperand MakeConstInt(int64_t Value);
+    static SSOperand MakeLabel(const char *Name);
+
+    static const char *NewLabel();
+
+    static void Emit(SSProgram *Program, SSOp Op, SSOperand Destination, SSOperand S1, SSOperand S2);
+
+    static SSOperand LowerLiteral(ASTLiteral *Literal);
+    static SSOperand LowerBinary(ASTBinaryExpression *Binary, SSProgram *Program);
+    static SSOperand LowerOwnership(ASTOwnershipExpression *Ownership, SSProgram *Program);
+    static SSOperand LowerExpression(ASTExpression *Expression, SSProgram *Program);
+    static void LowerAssign(ASTStatement *Statement, SSProgram *Program);
+    static void LowerVariableDeclaration(ASTStatement *Statement, SSProgram *Program);
+    static void LowerIf(ASTStatement *Statement, SSProgram *Program);
+    static void LowerWhile(ASTStatement *Statement, SSProgram *Program);
+    void LowerStatement(ASTStatement *Statement, SSProgram *Program);
+
+    SSProgram *LowerSS(ASTProgram *AST);
 
 #endif
