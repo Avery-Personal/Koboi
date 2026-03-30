@@ -4,7 +4,7 @@
     #include <stdint.h>
     #include <stddef.h>
 
-    #include "../../Parser/Parser.h"
+    #include "../../Frontend/Parser/Parser.h"
 
     #define LOOP_STACK_MAX 64
 

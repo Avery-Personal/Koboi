@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "Lexer/Lexer.h"
-#include "Parser/Parser.h"
-//#include "Compiler/Lower.h"
-#include "Compiler/SyntaxTapeS/SS.h"
+#include "KoboiC.h"
 
 char *ReadFile(const char *Path) {
     FILE *File = fopen(Path, "rb");
