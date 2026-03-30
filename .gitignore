@@ -4,3 +4,4 @@ src/site
 build/
 src/pako
 src/sendo
+.env/

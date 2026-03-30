@@ -1,8 +1,8 @@
 #ifndef KOBOIC_H
 #define KOBOIC_H
 
-    #include "../frontend/Lexer/Lexer.h"
-    #include "../frontend/Parser/Parser.h"
-    #include "../middleend/SyntaxTapeS/SS.h"
+    #include "../Frontend/Lexer/Lexer.h"
+    #include "../Frontend/Parser/Parser.h"
+    #include "../Middleend/SyntaxTapeS/SS.h"
 
 #endif

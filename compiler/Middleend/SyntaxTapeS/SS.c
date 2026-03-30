@@ -195,25 +195,30 @@ static SSOperand LowerLiteral(ASTLiteral *Literal) {
     switch (Literal -> LiteralKind) {
         case TYPE_INT:
             Op.Constant.Int = (int64_t) Literal -> Int;
+            Op.Constant.Kind = CONST_INT;
 
             break;
         case TYPE_FLOAT:
             Op.Constant.Float = Literal -> Float;
+            Op.Constant.Kind = CONST_FLOAT;
 
             break;
 
         case TYPE_CHAR:
             Op.Constant.Int   = (int64_t) Literal -> Char;
+            Op.Constant.Kind = CONST_STRING;
 
             break;
 
         case TYPE_STRING:
             Op.Constant.String = Literal -> String;
+            Op.Constant.Kind = CONST_STRING;
 
             break;
 
         case TYPE_BOOL:
             Op.Constant.Int   = (int64_t) Literal -> Bool;
+            Op.Constant.Kind = CONST_INT;
 
             break;
 
@@ -715,10 +720,28 @@ void SSOperandToString(SSOperand Op, char *Buffer, size_t Size) {
             break;
 
         case SS_OPERAND_CONSTANT:
-            if (Op.Constant.String)
-                snprintf(Buffer, Size, "\"%s\"", Op.Constant.String);
-            else
-                snprintf(Buffer, Size, "%lld", (long long) Op.Constant.Int);
+            switch (Op.Constant.Kind) {
+                case CONST_STRING:
+                    snprintf(Buffer, Size, "\"%s\"", Op.Constant.String);
+
+                    break;
+
+                case CONST_FLOAT:
+                    snprintf(Buffer, Size, "%g", Op.Constant.Float);
+
+                    break;
+
+                case CONST_INT:
+                    snprintf(Buffer, Size, "%lld", (long long) Op.Constant.Int);
+
+                    break;
+
+                default:
+                    snprintf(Buffer, Size, "0");
+
+                    break;
+            }
+
             break;
 
         case SS_OPERAND_OFFSET:

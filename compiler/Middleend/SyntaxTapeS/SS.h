@@ -80,6 +80,13 @@
         SS_OPERAND_SYMBOL
     } SSOperandType;
 
+    typedef enum {
+        CONST_NONE,
+        CONST_INT,
+        CONST_FLOAT,
+        CONST_STRING
+    } SSConstantKind;
+
     typedef struct {
         SSOperandType Type;
 
@@ -90,6 +97,8 @@
             const char *Label;
 
             struct {
+                SSConstantKind Kind;
+
                 int64_t Int;
                 double Float;
                 
