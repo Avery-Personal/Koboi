@@ -194,15 +194,26 @@ static SSOperand LowerLiteral(ASTLiteral *Literal) {
 
     switch (Literal -> LiteralKind) {
         case TYPE_INT:
-            Op.Constant.Int = Literal -> Int;
+            Op.Constant.Int = (int64_t) Literal -> Int;
 
             break;
         case TYPE_FLOAT:
             Op.Constant.Float = Literal -> Float;
 
             break;
+
+        case TYPE_CHAR:
+            Op.Constant.Int   = (int64_t) Literal -> Char;
+
+            break;
+
         case TYPE_STRING:
             Op.Constant.String = Literal -> String;
+
+            break;
+
+        case TYPE_BOOL:
+            Op.Constant.Int   = (int64_t) Literal -> Bool;
 
             break;
 
