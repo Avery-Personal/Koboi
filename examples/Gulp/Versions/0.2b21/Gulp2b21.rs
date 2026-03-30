@@ -1,3 +1,15 @@
+/*
+
+    Copyright 2026 © AveriC
+
+    Koboi Standardized Syntax Version 0.2b21
+
+    This is the DUMP file for Koboi. This means that it is a DUMP of all features of Koboi, to keep track of what it has, capabilities, etc.
+    This file is NOT compilable for standard Koboi, & WILL error; all shown cases of runtime situations (c += 1), does NOT work, as not inside of a function/callable context.
+    Although not everything is of need to be in a function, like main entrypoint, things like initialization, compiler flags, worlds, etc., are possible.
+
+*/
+
 ^![M<SFM>]^ // ^^ - Compiler Flag | ! - Full File | [] - Sector | M - Mandatory | <> - Feature constant | SFM - Safe mode (Compiler flag indicating for file to stay on safe mode constantly, overriding all safety mode calls for the full file & is mandatory)
 !^^A^ // ! - Cancel | ^ .. ^ - Compiler Flag | ^ - Flag | A - Above (Cancel the compiler flag above [! first means cancel, inside a compiler flag indicates full file])
 

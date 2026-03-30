@@ -9,6 +9,8 @@
 static int LabelCounter = 0;
 static int TemporaryCounter = 0;
 
+static int LoopStackTop = 0;
+
 const char *SSOpToString(SSOp Op) {
     switch (Op) {
         case SS_OP_NOP: return "NOP";
@@ -96,6 +98,37 @@ static SSOp OpFromAST(ASTOperator Op) {
 
 static int NewTemporary() {
     return TemporaryCounter++;
+}
+ 
+static void PushLoop(const char *Start, const char *End) {
+    if (LoopStackTop < LOOP_STACK_MAX) {
+        LoopStack[LoopStackTop].StartLabel = Start;
+        LoopStack[LoopStackTop].EndLabel   = End;
+        
+        LoopStackTop++;
+    }
+}
+ 
+static void PopLoop(void) {
+    if (LoopStackTop > 0)
+        LoopStackTop--;
+}
+ 
+static const char *CurrentLoopStart(void) {
+    return LoopStackTop > 0 ? LoopStack[LoopStackTop - 1].StartLabel : NULL;
+}
+ 
+static const char *CurrentLoopEnd(void) {
+    return LoopStackTop > 0 ? LoopStack[LoopStackTop - 1].EndLabel : NULL;
+}
+
+static SSOperand MakeRegister(void) {
+    SSOperand Op = {0};
+
+    Op.Type = SS_OPERAND_REGISTER;
+    Op.Register  = NewTemporary();
+
+    return Op;
 }
 
 static SSOperand MakeVariable(const char *Name) {

@@ -6,6 +6,8 @@
 
     #include "../../Parser/Parser.h"
 
+    #define LOOP_STACK_MAX 64
+
     typedef enum {
         SS_OP_NOP,
 
@@ -115,6 +117,11 @@
         size_t Count;
         size_t Capacity;
     } SSProgram;
+
+    static struct {
+        const char *StartLabel;
+        const char *EndLabel;
+    } LoopStack[LOOP_STACK_MAX];
 
     static SSOp OpFromAST(ASTOperator Op);
     
