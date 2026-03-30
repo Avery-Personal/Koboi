@@ -138,4 +138,7 @@
 
     SSProgram *LowerSS(ASTProgram *AST);
 
+    void SSOperandToString(SSOperand Op, char *Buffer, size_t Size);
+    void SSPrintInstruction(SSInstruction *Instruction, size_t Index);
+
 #endif

@@ -4,7 +4,72 @@
 
 #include "SS.h"
 
+#define SS_DEBUG 1
+
 static int LabelCounter = 0;
+
+const char *SSOpToString(SSOp Op) {
+    switch (Op) {
+        case SS_OP_NOP: return "NOP";
+
+        case SS_OP_CONST: return "CONST";
+        case SS_OP_LOAD: return "LOAD";
+        case SS_OP_STORE: return "STORE";
+
+        case SS_OP_LOAD_MEM: return "LOAD_MEM";
+        case SS_OP_STORE_MEM: return "STORE_MEM";
+        case SS_OP_ADDR_OF: return "ADDR_OF";
+        case SS_OP_COPY: return "COPY";
+        case SS_OP_MOVE: return "MOVE";
+        case SS_OP_FREE: return "FREE";
+
+        case SS_OP_ADD: return "ADD";
+        case SS_OP_SUB: return "SUB";
+        case SS_OP_MUL: return "MUL";
+        case SS_OP_DIV: return "DIV";
+        case SS_OP_MOD: return "MOD";
+
+        case SS_OP_EQ: return "EQ";
+        case SS_OP_NE: return "NE";
+        case SS_OP_GT: return "GT";
+        case SS_OP_GE: return "GE";
+        case SS_OP_LT: return "LT";
+        case SS_OP_LE: return "LE";
+
+        case SS_OP_AND: return "AND";
+        case SS_OP_OR: return "OR";
+        case SS_OP_NOT: return "NOT";
+
+        case SS_OP_LABEL: return "LABEL";
+        case SS_OP_JMP: return "JMP";
+        case SS_OP_JMP_IF: return "JMP_IF";
+        case SS_OP_JMP_IF_NOT: return "JMP_IF_NOT";
+
+        case SS_OP_CALL: return "CALL";
+        case SS_OP_CALL_INDIRECT: return "CALL_INDIRECT";
+        case SS_OP_RET: return "RET";
+
+        case SS_OP_SYS: return "SYS";
+
+        case SS_OP_PARAM: return "PARAM";
+        case SS_OP_ARG: return "ARG";
+
+        case SS_OP_SCOPE_BEGIN: return "SCOPE_BEGIN";
+        case SS_OP_SCOPE_END: return "SCOPE_END";
+        case SS_OP_REGION_BEGIN: return "REGION_BEGIN";
+        case SS_OP_REGION_END: return "REGION_END";
+
+        case SS_OP_ASSUME: return "ASSUME";
+        case SS_OP_CHECK: return "CHECK";
+        case SS_OP_DEFER: return "DEFER";
+        case SS_OP_TRAP: return "TRAP";
+
+        case SS_OP_LINE: return "LINE";
+        case SS_OP_NOP_DEBUG: return "NOP_DEBUG";
+
+        default: return "UNKNOWN";
+    }
+}
 
 static SSOp OpFromAST(ASTOperator Op) {
     switch (Op) {
@@ -63,18 +128,25 @@ static const char *NewLabel() {
     return strdup(Buffer);
 }
 
-static void Emit(SSProgram *Program, SSOp Op, SSOperand Destination, SSOperand S1, SSOperand S2) {
+static void Emit(SSProgram *Program, SSOp Op, SSOperand Destination, SSOperand Source1, SSOperand Source2) {
     if (Program -> Count >= Program -> Capacity) {
         Program -> Capacity = Program -> Capacity ? Program -> Capacity * 2 : 64;
         Program -> Instructions = realloc(Program -> Instructions, sizeof(SSInstruction) * Program -> Capacity);
     }
 
-    Program -> Instructions[Program -> Count++] = (SSInstruction){
+    SSInstruction Instruction = {
         .Op = Op,
         .Destination = Destination,
-        .Source1 = S1,
-        .Source2 = S2
+        .Source1 = Source1,
+        .Source2 = Source2
     };
+
+    Program -> Instructions[Program -> Count++] = Instruction;
+
+
+    #if SS_DEBUG
+        SSPrintInstruction(&Instruction, Program -> Count - 1);
+    #endif
 }
 
 static SSOperand LowerLiteral(ASTLiteral *Literal) {
@@ -254,4 +326,55 @@ SSProgram *LowerSS(ASTProgram *AST) {
     }
 
     return Program;
+}
+
+void SSOperandToString(SSOperand Op, char *Buffer, size_t Size) {
+    switch (Op.Type) {
+        case SS_OPERAND_NONE:
+            snprintf(Buffer, Size, "_");
+
+            break;
+
+        case SS_OPERAND_REGISTER:
+            snprintf(Buffer, Size, "r%d", Op.Register);
+
+            break;
+
+        case SS_OPERAND_VARIABLE:
+            snprintf(Buffer, Size, "%s", Op.Variable);
+
+            break;
+
+        case SS_OPERAND_LABEL:
+            snprintf(Buffer, Size, "%s", Op.Label);
+
+            break;
+
+        case SS_OPERAND_CONSTANT:
+            if (Op.Constant.String)
+                snprintf(Buffer, Size, "\"%s\"", Op.Constant.String);
+            else
+                snprintf(Buffer, Size, "%lld", (long long) Op.Constant.Int);
+            break;
+
+        case SS_OPERAND_OFFSET:
+            snprintf(Buffer, Size, "offset(%d)", Op.Offset);
+
+            break;
+
+        default:
+            snprintf(Buffer, Size, "?");
+
+            break;
+    }
+}
+
+void SSPrintInstruction(SSInstruction *Instruction, size_t Index) {
+    char Destination[64], Source1[64], Source2[64];
+
+    SSOperandToString(Instruction -> Destination, Destination, sizeof(Destination));
+    SSOperandToString(Instruction -> Source1, Source1, sizeof(Source1));
+    SSOperandToString(Instruction -> Source2, Source2, sizeof(Source2));
+
+    printf("[SS] #%zu | %-12s | %s, %s, %s\n", Index, SSOpToString(Instruction -> Op), Destination, Source1, Source2);
 }
