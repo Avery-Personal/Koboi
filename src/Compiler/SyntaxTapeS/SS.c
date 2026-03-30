@@ -7,6 +7,7 @@
 #define SS_DEBUG 1
 
 static int LabelCounter = 0;
+static int TemporaryCounter = 0;
 
 const char *SSOpToString(SSOp Op) {
     switch (Op) {
@@ -91,6 +92,10 @@ static SSOp OpFromAST(ASTOperator Op) {
 
         default: return SS_OP_NOP;
     }
+}
+
+static int NewTemporary() {
+    return TemporaryCounter++;
 }
 
 static SSOperand MakeVariable(const char *Name) {
@@ -180,7 +185,7 @@ static SSOperand LowerBinary(ASTBinaryExpression *Binary, SSProgram *Program) {
 
     SSOperand Temporary = {
         .Type = SS_OPERAND_REGISTER,
-        .Register = 0
+        .Register = NewTemporary()
     };
 
     Emit(Program, OpFromAST(Binary -> Op), Temporary, Left, Right);
