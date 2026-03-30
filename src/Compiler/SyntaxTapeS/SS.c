@@ -224,13 +224,28 @@ static SSOperand LowerLiteral(ASTLiteral *Literal) {
 }
 
 static SSOperand LowerBinary(ASTBinaryExpression *Binary, SSProgram *Program) {
+    if (Binary -> IsAssignment) {
+        SSOperand Right = LowerExpression(Binary -> Right, Program);
+        SSOperand Left = LowerExpression(Binary -> Left, Program);
+
+        SSOp CompOp = OpFromAST(Binary -> Op);
+
+        if (CompOp != SS_OP_NOP) {
+            SSOperand Temporary = MakeRegister();
+
+            Emit(Program, CompOp, Temporary, Left, Right);
+            Emit(Program, SS_OP_STORE, Left, Temporary, (SSOperand){0});
+        } else {
+            Emit(Program, SS_OP_STORE, Left, Right, (SSOperand){0});
+        }
+
+        return Left;
+    }
+
     SSOperand Left = LowerExpression(Binary -> Left, Program);
     SSOperand Right = LowerExpression(Binary -> Right, Program);
 
-    SSOperand Temporary = {
-        .Type = SS_OPERAND_REGISTER,
-        .Register = NewTemporary()
-    };
+    SSOperand Temporary = MakeRegister();
 
     Emit(Program, OpFromAST(Binary -> Op), Temporary, Left, Right);
 
@@ -239,6 +254,7 @@ static SSOperand LowerBinary(ASTBinaryExpression *Binary, SSProgram *Program) {
 
 static SSOperand LowerOwnership(ASTOwnershipExpression *Ownership, SSProgram *Program) {
     SSOperand Target = LowerExpression(Ownership -> Target, Program);
+    SSOperand Result = MakeRegister();
 
     switch (Ownership -> Kind) {
         case OWN_MOVE:
@@ -256,10 +272,62 @@ static SSOperand LowerOwnership(ASTOwnershipExpression *Ownership, SSProgram *Pr
 
             break;
 
-        default: break;
+        case OWN_BORROW:
+            Emit(Program, SS_OP_ADDR_OF, Result, Target, (SSOperand){0});
+
+            break;
+
+        case OWN_TRAIL:
+            Emit(Program, SS_OP_COPY, Result, Target, (SSOperand){0});
+
+            break;
+
+        default:
+            Result = Target;
+            
+            break;
     }
 
-    return Target;
+    return Result;
+}
+
+static SSOperand LowerCall(ASTCallExpression *Call, SSProgram *Program) {
+    for (size_t i = 0; i < Call -> ArgumentCount; i++) {
+        SSOperand Argument = LowerExpression(Call -> Arguments[i], Program);
+
+        Emit(Program, SS_OP_ARG, Argument, MakeConstInt((int64_t) i), (SSOperand){0});
+    }
+ 
+    SSOperand Callee = LowerExpression(Call -> Callee, Program);
+    SSOperand Result = MakeRegister();
+ 
+    SSOp CallOp = (Call -> Callee -> Kind == EXPR_IDENTIFIER) ? SS_OP_CALL : SS_OP_CALL_INDIRECT;
+ 
+    Emit(Program, CallOp, Result, Callee, (SSOperand){0});
+
+    return Result;
+}
+
+static SSOperand LowerArrayExpression(ASTArrayExpression *Array, SSProgram *Program) {
+    SSOperand Base = MakeRegister();
+ 
+    for (size_t i = 0; i < Array -> Count; i++) {
+        SSOperand Element = LowerExpression(Array -> Elements[i], Program);
+
+        Emit(Program, SS_OP_STORE_MEM, Base, Element, MakeConstInt((int64_t) i));
+    }
+ 
+    return Base;
+}
+
+static SSOperand LowerIndex(ASTIndexExpression *Index, SSProgram *Program) {
+    SSOperand Target = LowerExpression(Index -> Target, Program);
+    SSOperand _Index = LowerExpression(Index -> Index,  Program);
+    SSOperand Result = MakeRegister();
+ 
+    Emit(Program, SS_OP_LOAD_MEM, Result, Target, _Index);
+
+    return Result;
 }
 
 static SSOperand LowerExpression(ASTExpression *Expression, SSProgram *Program) {
@@ -270,14 +338,33 @@ static SSOperand LowerExpression(ASTExpression *Expression, SSProgram *Program) 
 
         case EXPR_UNARY: {
             SSOperand Value = LowerExpression(Expression -> Unary.Operand, Program);
+            SSOperand Result = MakeRegister();
+ 
+            if (Expression -> Unary.Op == OP_NOT) {
+                Emit(Program, SS_OP_NOT, Result, Value, (SSOperand){0});
 
-            if (Expression -> Unary.Op == OP_NOT)
-                Emit(Program, SS_OP_NOT, Value, Value, (SSOperand){0});
+                return Result;
+            }
+
+            if (Expression -> Unary.Op == OP_SUB) {
+                Emit(Program, SS_OP_SUB, Result, MakeConstInt(0), Value);
+
+                return Result;
+            }
 
             return Value;
         }
-
+ 
+        case EXPR_CALL: return LowerCall(&Expression -> Call, Program);
+        case EXPR_ARRAY: return LowerArrayExpression(&Expression -> Array, Program);
+        case EXPR_INDEX: return LowerIndex(&Expression -> Index, Program);
         case EXPR_OWNERSHIP: return LowerOwnership(&Expression -> Ownership, Program);
+
+        case EXPR_MEMBER: {
+            Emit(Program, SS_OP_NOP, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+
+            return (SSOperand){0};
+        }
 
         default: return (SSOperand){0};
     }
@@ -291,21 +378,22 @@ static void LowerAssign(ASTStatement *Statement, SSProgram *Program) {
 }
 
 static void LowerVariableDeclaration(ASTStatement *Statement, SSProgram *Program) {
-    if (Statement -> VariableDeclaration.Initializer) {
-        SSOperand Value = LowerExpression(Statement -> VariableDeclaration.Initializer, Program);
-        SSOperand Variable = MakeVariable(Statement -> VariableDeclaration.Name);
+    if (!Statement -> VariableDeclaration.Initializer)
+        return;
 
-        Emit(Program, SS_OP_STORE, Variable, Value, (SSOperand){0});
-    }
+    SSOperand Value = LowerExpression(Statement -> VariableDeclaration.Initializer, Program);
+    SSOperand Variable = MakeVariable(Statement -> VariableDeclaration.Name);
+
+    Emit(Program, SS_OP_STORE, Variable, Value, (SSOperand){0});
 }
 
 static void LowerIf(ASTStatement *Statement, SSProgram *Program) {
     const char *LabelElse = NewLabel();
     const char *LabelEnd  = NewLabel();
 
-    SSOperand Cond = LowerExpression(Statement -> If.Condition, Program);
+    SSOperand Condition = LowerExpression(Statement -> If.Condition, Program);
 
-    Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelElse), Cond, (SSOperand){0});
+    Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelElse), Condition, (SSOperand){0});
 
     for (size_t i = 0; i < Statement -> If.ThenCount; i++)
         LowerStatement(Statement -> If.ThenBlock[i], Program);
@@ -325,9 +413,9 @@ static void LowerWhile(ASTStatement *Statement, SSProgram *Program) {
 
     Emit(Program, SS_OP_LABEL, MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
 
-    SSOperand Cond = LowerExpression(Statement -> While.Condition, Program);
+    SSOperand Condition = LowerExpression(Statement -> While.Condition, Program);
 
-    Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelEnd), Cond, (SSOperand){0});
+    Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelEnd), Condition, (SSOperand){0});
 
     for (size_t i = 0; i < Statement -> While.Count; i++)
         LowerStatement(Statement -> While.Body[i], Program);
@@ -336,11 +424,154 @@ static void LowerWhile(ASTStatement *Statement, SSProgram *Program) {
     Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd), (SSOperand){0}, (SSOperand){0});
 }
 
+static void LowerFor(ASTStatement *Statement, SSProgram *Program) {
+    const char *LabelStart = NewLabel();
+    const char *LabelEnd = NewLabel();
+ 
+    if (Statement -> For.Start) {
+        SSOperand Start = LowerExpression(Statement -> For.Start, Program);
+        SSOperand Iteration = MakeVariable(Statement -> For.Iterator);
+
+        Emit(Program, SS_OP_STORE, Iteration, Start, (SSOperand){0});
+    }
+ 
+    Emit(Program, SS_OP_LABEL, MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
+
+    if (Statement -> For.End) {
+        SSOperand Iteration = MakeVariable(Statement -> For.Iterator);
+        SSOperand End = LowerExpression(Statement -> For.End, Program);
+        SSOperand Condition = MakeRegister();
+
+        Emit(Program, SS_OP_LT, Condition, Iteration, End);
+        Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelEnd), Condition, (SSOperand){0});
+    }
+ 
+    PushLoop(LabelStart, LabelEnd);
+ 
+    for (size_t i = 0; i < Statement -> For.Count; i++)
+        LowerStatement(Statement -> For.Body[i], Program);
+ 
+    PopLoop();
+ 
+    if (Statement -> For.Step)
+        LowerExpression(Statement -> For.Step, Program);
+ 
+    Emit(Program, SS_OP_JMP,   MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
+    Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd),   (SSOperand){0}, (SSOperand){0});
+}
+
+static void LowerReturn(ASTStatement *Statement, SSProgram *Program) {
+    if (Statement -> Return.Value) {
+        SSOperand Value = LowerExpression(Statement -> Return.Value, Program);
+
+        Emit(Program, SS_OP_RET, Value, (SSOperand){0}, (SSOperand){0});
+    } else {
+        Emit(Program, SS_OP_RET, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+    }
+}
+ 
+static void LowerBreak(SSProgram *Program) {
+    const char *End = CurrentLoopEnd();
+    if (End){
+        Emit(Program, SS_OP_JMP, MakeLabel(End), (SSOperand){0}, (SSOperand){0});
+    } else {
+        Emit(Program, SS_OP_TRAP, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+    }
+}
+ 
+static void LowerContinue(SSProgram *Program) {
+    const char *Start = CurrentLoopStart();
+    if (Start)
+        Emit(Program, SS_OP_JMP, MakeLabel(Start), (SSOperand){0}, (SSOperand){0});
+    else
+        Emit(Program, SS_OP_TRAP, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerBlock(ASTStatement *Statement, SSProgram *Program) {
+    Emit(Program, SS_OP_SCOPE_BEGIN, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+ 
+    for (size_t i = 0; i < Statement -> Block.Count; i++)
+        LowerStatement(Statement -> Block.Statements[i], Program);
+ 
+    Emit(Program, SS_OP_SCOPE_END, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerScopedBlock(ASTStatement *Statement, SSProgram *Program, const char *RegionName) {
+    SSOperand Tag = MakeVariable(RegionName);
+
+    Emit(Program, SS_OP_REGION_BEGIN, Tag, (SSOperand){0}, (SSOperand){0});
+ 
+    for (size_t i = 0; i < Statement -> ScopedBlock.Count; i++)
+        LowerStatement(Statement -> ScopedBlock.Body[i], Program);
+ 
+    Emit(Program, SS_OP_REGION_END, Tag, (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerMatch(ASTStatement *Statement, SSProgram *Program) {
+    SSOperand Target  = LowerExpression(Statement -> Match.Target, Program);
+
+    const char *LabelEnd = NewLabel();
+ 
+    for (size_t i = 0; i < Statement -> Match.ArmCount; i++) {
+        ASTMatchArm *Arm = &Statement -> Match.Arms[i];
+
+        const char *LabelNext = NewLabel();
+ 
+        if (Arm -> Pattern) {
+            SSOperand Pattern = LowerExpression(Arm -> Pattern, Program);
+            SSOperand Condition = MakeRegister();
+
+            Emit(Program, SS_OP_EQ, Condition, Target, Pattern);
+            Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelNext), Condition, (SSOperand){0});
+        }
+ 
+        if (Arm -> Guard) {
+            SSOperand GuardCondition = LowerExpression(Arm -> Guard, Program);
+
+            Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelNext), GuardCondition, (SSOperand){0});
+        }
+ 
+        for (size_t j = 0; j < Arm -> BodyCount; j++)
+            LowerStatement(Arm -> Body[j], Program);
+ 
+        Emit(Program, SS_OP_JMP,   MakeLabel(LabelEnd),  (SSOperand){0}, (SSOperand){0});
+        Emit(Program, SS_OP_LABEL, MakeLabel(LabelNext), (SSOperand){0}, (SSOperand){0});
+    }
+ 
+    Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd), (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerCheck(ASTStatement *Statement, SSProgram *Program) {
+    SSOperand Condition = LowerExpression(Statement -> ConditionBlock.Condition, Program);
+
+    Emit(Program, SS_OP_CHECK, Condition, (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerAssume(ASTStatement *Statement, SSProgram *Program) {
+    SSOperand Condition = LowerExpression(Statement -> ConditionBlock.Condition, Program);
+
+    Emit(Program, SS_OP_ASSUME, Condition, (SSOperand){0}, (SSOperand){0});
+}
+ 
+static void LowerDefer(ASTStatement *Statement, SSProgram *Program) {
+    Emit(Program, SS_OP_DEFER, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+    Emit(Program, SS_OP_SCOPE_BEGIN, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+ 
+    for (size_t i = 0; i < Statement -> Defer.Count; i++)
+        LowerStatement(Statement -> Defer.Body[i], Program);
+ 
+    Emit(Program, SS_OP_SCOPE_END, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+}
+
 void LowerStatement(ASTStatement *Statement, SSProgram *Program) {
     switch (Statement -> Kind) {
         case STMT_VAR_DECL:
             LowerVariableDeclaration(Statement, Program);
 
+            break;
+ 
+        case STMT_ENUM_DECL:
+        case STMT_STATE_DECL:
             break;
 
         case STMT_ASSIGN:
@@ -357,9 +588,69 @@ void LowerStatement(ASTStatement *Statement, SSProgram *Program) {
             LowerWhile(Statement, Program);
 
             break;
+ 
+        case STMT_FOR:
+            LowerFor(Statement, Program);
 
+            break;
+ 
+        case STMT_RETURN:
+            LowerReturn(Statement, Program);
+
+            break;
+ 
+        case STMT_BREAK:
+            LowerBreak(Program);
+
+            break;
+ 
+        case STMT_CONTINUE:
+            LowerContinue(Program);
+
+            break;
+ 
         case STMT_EXPR:
             LowerExpression(Statement -> Expression.Expression, Program);
+
+            break;
+ 
+        case STMT_BLOCK:
+            LowerBlock(Statement, Program);
+
+            break;
+ 
+        case STMT_MATCH:
+            LowerMatch(Statement, Program);
+
+            break;
+ 
+        case STMT_UNSAFE:
+            LowerScopedBlock(Statement, Program, "unsafe");
+
+            break;
+ 
+        case STMT_SAFE:
+            LowerScopedBlock(Statement, Program, "safe");
+
+            break;
+ 
+        case STMT_TRUSTED:
+            LowerScopedBlock(Statement, Program, "trusted");
+
+            break;
+ 
+        case STMT_CHECK:
+            LowerCheck(Statement, Program);
+
+            break;
+ 
+        case STMT_ASSUME:
+            LowerAssume(Statement, Program);
+
+            break;
+ 
+        case STMT_DEFER:
+            LowerDefer(Statement, Program);
 
             break;
 
@@ -367,11 +658,35 @@ void LowerStatement(ASTStatement *Statement, SSProgram *Program) {
     }
 }
 
+static void LowerSubprogram(ASTSubprogram *Subprogram, SSProgram *Program) {
+    Emit(Program, SS_OP_LABEL, MakeLabel(Subprogram -> Name), (SSOperand){0}, (SSOperand){0});
+    Emit(Program, SS_OP_SCOPE_BEGIN, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+ 
+    for (size_t i = 0; i < Subprogram -> ParameterCount; i++) {
+        SSOperand Param = MakeVariable(Subprogram -> Parameters[i].Name);
+
+        Emit(Program, SS_OP_PARAM, Param, MakeConstInt((int64_t)i), (SSOperand){0});
+    }
+ 
+    for (size_t i = 0; i < Subprogram -> BodyCount; i++)
+        LowerStatement(Subprogram -> Body[i], Program);
+ 
+    if (Subprogram -> BodyCount == 0 || Subprogram -> Body[Subprogram -> BodyCount - 1]->Kind != STMT_RETURN) {
+        Emit(Program, SS_OP_RET, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+    }
+ 
+    Emit(Program, SS_OP_SCOPE_END, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
+}
+
 SSProgram *LowerSS(ASTProgram *AST) {
     SSProgram *Program = calloc(1, sizeof(SSProgram));
 
     for (size_t i = 0; i < AST -> StatementCount; i++) {
         LowerStatement(AST -> Statements[i], Program);
+    }
+
+    for (size_t i = 0; i < AST -> SubprogramCount; i++) {
+        LowerSubprogram(AST -> Subprograms[i], Program);
     }
 
     return Program;
