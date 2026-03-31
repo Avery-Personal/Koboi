@@ -4,7 +4,7 @@
 
 #include "SS.h"
 
-#define SS_DEBUG 1
+#define SS_DEBUG 0
 
 static int LabelCounter = 0;
 static int TemporaryCounter = 0;
