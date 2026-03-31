@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+examples/ linguist-detectable=true
+examples/ linguist-vendored=false
+
+*.kb linguist-detectable=true
+*.kb linguist-generated=false
