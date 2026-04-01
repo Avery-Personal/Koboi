@@ -16,17 +16,6 @@
         TYPE_NAMED
     } ASTTypeKind;
 
-    typedef struct ASTType {
-        ASTTypeKind Kind;
-
-        struct ASTType *ElementType;
-        size_t ArraySize;
-
-        const char *Name;
-
-        int IsSlice;
-    } ASTType;
-
     typedef enum {
         MOD_NONE = 0,
         MOD_GLOBAL = 1 << 0,
@@ -79,6 +68,56 @@
         EXPR_OWNERSHIP
     } ASTExpressionKind;
 
+    typedef enum {
+        STMT_VAR_DECL,
+        STMT_ENUM_DECL,
+        STMT_STATE_DECL,
+        STMT_ASSIGN,
+        STMT_IF,
+        STMT_WHILE,
+        STMT_FOR,
+        STMT_RETURN,
+        STMT_BREAK,
+        STMT_CONTINUE,
+        STMT_EXPR,
+        STMT_BLOCK,
+
+        STMT_MATCH,
+
+        STMT_UNSAFE,
+        STMT_SAFE,
+        STMT_TRUSTED,
+
+        STMT_CHECK,
+        STMT_ASSUME,
+        STMT_DEFER
+    } ASTStmtKind;
+
+    typedef struct ASTType {
+        ASTTypeKind Kind;
+
+        ASTSource Source;
+
+        struct ASTType *ElementType;
+        size_t ArraySize;
+
+        const char *Name;
+
+        int IsSlice;
+    } ASTType;
+
+    typedef struct {
+        uint32_t Line;
+        uint32_t Column;
+        uint32_t Offset;
+
+        uint32_t EndLine;
+        uint32_t EndColumn;
+        uint32_t EndOffset;
+
+        uint32_t FileID;
+    } ASTSource;
+
     typedef struct ASTExpression ASTExpression;
 
     typedef struct {
@@ -130,6 +169,8 @@
     struct ASTExpression {
         ASTExpressionKind Kind;
 
+        ASTSource Source;
+
         union {
             const char *Identifier;
 
@@ -170,33 +211,10 @@
         size_t BodyCount;
     } ASTMatchArm;
 
-    typedef enum {
-        STMT_VAR_DECL,
-        STMT_ENUM_DECL,
-        STMT_STATE_DECL,
-        STMT_ASSIGN,
-        STMT_IF,
-        STMT_WHILE,
-        STMT_FOR,
-        STMT_RETURN,
-        STMT_BREAK,
-        STMT_CONTINUE,
-        STMT_EXPR,
-        STMT_BLOCK,
-
-        STMT_MATCH,
-
-        STMT_UNSAFE,
-        STMT_SAFE,
-        STMT_TRUSTED,
-
-        STMT_CHECK,
-        STMT_ASSUME,
-        STMT_DEFER
-    } ASTStmtKind;
-
     struct ASTStatement {
         ASTStmtKind Kind;
+
+        ASTSource Source;
 
         union {
             struct {

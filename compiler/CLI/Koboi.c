@@ -48,8 +48,11 @@ int main(int argc, char **argv) {
     Parser __PARSER__ = CreateParser(&__TOKENS__);
     ASTProgram *__AST__ = ParseProgram(&__PARSER__);
     SSProgram *__SYNTAX_TAPES__ = LowerSS(__AST__);
+    SSSSContext *__SYNTAX_TAPES_SEMANTICS_SYSTEM__ = CreateContext();
 
-    if (__PARSER__.HasError) {
+    int __SSSS_ERROR__ = AnalyzeProgram(__SYNTAX_TAPES_SEMANTICS_SYSTEM__, __SYNTAX_TAPES__);
+
+    if (__PARSER__.HasError || __SSSS_ERROR__) {
         return 1;
     }
 

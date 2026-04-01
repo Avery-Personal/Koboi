@@ -99,6 +99,7 @@
 
         TOKEN_DOT,
         TOKEN_DOT_DOT,
+        TOKEN_DOT_DOT_DOT,
 
         TOKEN_DOLLAR,
         TOKEN_AMPERSAND,

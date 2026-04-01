@@ -786,7 +786,13 @@ Token LexerNextToken(Lexer *_Lexer) {
                 if (LexerPeek(_Lexer) == '.') {
                     LexerNext(_Lexer);
 
-                    _Token.Type = TOKEN_DOT_DOT;
+                    if (LexerPeek(_Lexer) == '.') {
+                        LexerNext(_Lexer);
+
+                        _Token.Type = TOKEN_DOT_DOT_DOT;
+                    } else {
+                        _Token.Type = TOKEN_DOT_DOT;
+                    }
                 } else {
                     _Token.Type = TOKEN_DOT;
                 }

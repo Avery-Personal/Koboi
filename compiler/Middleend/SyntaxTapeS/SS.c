@@ -4,7 +4,7 @@
 
 #include "SS.h"
 
-#define SS_DEBUG 1
+#define SS_DEBUG 0
 
 static int LabelCounter = 0;
 static int TemporaryCounter = 0;
@@ -181,7 +181,7 @@ static void Emit(SSProgram *Program, SSOp Op, SSOperand Destination, SSOperand S
         .Op = Op,
         .Destination = Destination,
         .Source1 = Source1,
-        .Source2 = Source2
+        .Source2 = Source2,
     };
 
     Program -> Instructions[Program -> Count++] = Instruction;
