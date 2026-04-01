@@ -6,6 +6,8 @@
 
     #include "../../Frontend/Parser/Parser.h"
 
+    #define SS_FLOAT_SENTINEL INT64_MIN
+
     #define LOOP_STACK_MAX 64
 
     typedef enum {

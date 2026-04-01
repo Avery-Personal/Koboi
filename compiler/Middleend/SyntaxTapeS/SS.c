@@ -4,7 +4,7 @@
 
 #include "SS.h"
 
-#define SS_DEBUG 0
+#define SS_DEBUG 1
 
 static int LabelCounter = 0;
 static int TemporaryCounter = 0;
@@ -14,66 +14,54 @@ static int LoopStackTop = 0;
 const char *SSOpToString(SSOp Op) {
     switch (Op) {
         case SS_OP_NOP: return "NOP";
-
         case SS_OP_CONST: return "CONST";
         case SS_OP_LOAD: return "LOAD";
         case SS_OP_STORE: return "STORE";
-
         case SS_OP_LOAD_MEM: return "LOAD_MEM";
         case SS_OP_STORE_MEM: return "STORE_MEM";
         case SS_OP_ADDR_OF: return "ADDR_OF";
         case SS_OP_COPY: return "COPY";
         case SS_OP_MOVE: return "MOVE";
         case SS_OP_FREE: return "FREE";
-
         case SS_OP_ADD: return "ADD";
         case SS_OP_SUB: return "SUB";
         case SS_OP_MUL: return "MUL";
         case SS_OP_DIV: return "DIV";
         case SS_OP_MOD: return "MOD";
-
         case SS_OP_EQ: return "EQ";
         case SS_OP_NE: return "NE";
         case SS_OP_GT: return "GT";
         case SS_OP_GE: return "GE";
         case SS_OP_LT: return "LT";
         case SS_OP_LE: return "LE";
-
         case SS_OP_AND: return "AND";
         case SS_OP_OR: return "OR";
         case SS_OP_NOT: return "NOT";
-
         case SS_OP_LABEL: return "LABEL";
         case SS_OP_JMP: return "JMP";
         case SS_OP_JMP_IF: return "JMP_IF";
         case SS_OP_JMP_IF_NOT: return "JMP_IF_NOT";
-
         case SS_OP_CALL: return "CALL";
         case SS_OP_CALL_INDIRECT: return "CALL_INDIRECT";
         case SS_OP_RET: return "RET";
-
         case SS_OP_SYS: return "SYS";
-
         case SS_OP_PARAM: return "PARAM";
         case SS_OP_ARG: return "ARG";
-
         case SS_OP_SCOPE_BEGIN: return "SCOPE_BEGIN";
         case SS_OP_SCOPE_END: return "SCOPE_END";
         case SS_OP_REGION_BEGIN: return "REGION_BEGIN";
         case SS_OP_REGION_END: return "REGION_END";
-
         case SS_OP_ASSUME: return "ASSUME";
         case SS_OP_CHECK: return "CHECK";
         case SS_OP_DEFER: return "DEFER";
         case SS_OP_TRAP: return "TRAP";
-
         case SS_OP_LINE: return "LINE";
         case SS_OP_NOP_DEBUG: return "NOP_DEBUG";
 
         default: return "UNKNOWN";
     }
 }
-
+ 
 static SSOp OpFromAST(ASTOperator Op) {
     switch (Op) {
         case OP_ADD: return SS_OP_ADD;
@@ -81,14 +69,12 @@ static SSOp OpFromAST(ASTOperator Op) {
         case OP_MUL: return SS_OP_MUL;
         case OP_DIV: return SS_OP_DIV;
         case OP_MOD: return SS_OP_MOD;
-
         case OP_EQ: return SS_OP_EQ;
         case OP_NE: return SS_OP_NE;
         case OP_GT: return SS_OP_GT;
         case OP_GE: return SS_OP_GE;
         case OP_LT: return SS_OP_LT;
         case OP_LE: return SS_OP_LE;
-
         case OP_AND: return SS_OP_AND;
         case OP_OR: return SS_OP_OR;
 
@@ -149,6 +135,25 @@ static SSOperand MakeConstInt(int64_t Value) {
     return Op;
 }
 
+static SSOperand MakeSymbol(const char *FieldName) {
+    SSOperand Op = {0};
+
+    Op.Type = SS_OPERAND_SYMBOL;
+    Op.Variable = FieldName;
+    
+    return Op;
+}
+
+static SSOperand MakeConstFloat(double Value) {
+    SSOperand Op = {0};
+
+    Op.Type = SS_OPERAND_CONSTANT;
+    Op.Constant.Float = Value;
+    Op.Constant.Int = SS_FLOAT_SENTINEL;
+
+    return Op;
+}
+
 static SSOperand MakeLabel(const char *Name) {
     SSOperand Op = {0};
 
@@ -187,6 +192,15 @@ static void Emit(SSProgram *Program, SSOp Op, SSOperand Destination, SSOperand S
     #endif
 }
 
+
+static int IsMemberAccess(const ASTExpression *Expression) {
+    return Expression -> Kind == EXPR_BINARY && Expression -> Metadata.IsLValue && Expression -> Binary.Op == OP_ADD && Expression -> Binary.Right != NULL && Expression -> Binary.Right->Kind == EXPR_IDENTIFIER;
+}
+ 
+static const char *MemberFieldName(const ASTExpression *Expression) {
+    return Expression -> Binary.Right -> Identifier;
+}
+
 static SSOperand LowerLiteral(ASTLiteral *Literal) {
     SSOperand Op = {0};
 
@@ -200,12 +214,13 @@ static SSOperand LowerLiteral(ASTLiteral *Literal) {
             break;
         case TYPE_FLOAT:
             Op.Constant.Float = Literal -> Float;
+            Op.Constant.Int = SS_FLOAT_SENTINEL;
             Op.Constant.Kind = CONST_FLOAT;
 
             break;
 
         case TYPE_CHAR:
-            Op.Constant.Int   = (int64_t) Literal -> Char;
+            Op.Constant.Int = (int64_t) Literal -> Char;
             Op.Constant.Kind = CONST_STRING;
 
             break;
@@ -263,17 +278,18 @@ static SSOperand LowerOwnership(ASTOwnershipExpression *Ownership, SSProgram *Pr
 
     switch (Ownership -> Kind) {
         case OWN_MOVE:
-            Emit(Program, SS_OP_MOVE, Target, Target, (SSOperand){0});
+            Emit(Program, SS_OP_MOVE, Result, Target, (SSOperand){0});
+            Emit(Program, SS_OP_FREE, Target, (SSOperand){0}, (SSOperand){0});
 
             break;
 
         case OWN_COPY:
-            Emit(Program, SS_OP_COPY, Target, Target, (SSOperand){0});
+            Emit(Program, SS_OP_COPY, Result, Target, (SSOperand){0});
 
             break;
 
         case OWN_ADDRESS:
-            Emit(Program, SS_OP_ADDR_OF, Target, Target, (SSOperand){0});
+            Emit(Program, SS_OP_ADDR_OF, Result, Target, (SSOperand){0});
 
             break;
 
@@ -339,7 +355,20 @@ static SSOperand LowerExpression(ASTExpression *Expression, SSProgram *Program) 
     switch (Expression -> Kind) {
         case EXPR_LITERAL: return LowerLiteral(&Expression -> Literal);
         case EXPR_IDENTIFIER: return MakeVariable(Expression -> Identifier);
-        case EXPR_BINARY: return LowerBinary(&Expression -> Binary, Program);
+
+        case EXPR_BINARY: {
+            if (IsMemberAccess(Expression)) {
+                SSOperand Base = LowerExpression(Expression -> Binary.Left, Program);
+                SSOperand Field = MakeSymbol(MemberFieldName(Expression));
+                SSOperand Result = MakeRegister();
+
+                Emit(Program, SS_OP_LOAD_MEM, Result, Base, Field);
+
+                return Result;
+            }
+
+            return LowerBinary(&Expression->Binary, Program);
+        }
 
         case EXPR_UNARY: {
             SSOperand Value = LowerExpression(Expression -> Unary.Operand, Program);
@@ -376,10 +405,33 @@ static SSOperand LowerExpression(ASTExpression *Expression, SSProgram *Program) 
 }
 
 static void LowerAssign(ASTStatement *Statement, SSProgram *Program) {
-    SSOperand Target = LowerExpression(Statement -> Assign.Target, Program);
-    SSOperand Value  = LowerExpression(Statement -> Assign.Value, Program);
+    ASTExpression *Target = Statement -> Assign.Target;
+    ASTExpression *Value  = Statement -> Assign.Value;
+ 
+    if (Target -> Kind == EXPR_INDEX) {
+        SSOperand Base = LowerExpression(Target -> Index.Target, Program);
+        SSOperand Index = LowerExpression(Target -> Index.Index,  Program);
+        SSOperand OpValue = LowerExpression(Value, Program);
 
-    Emit(Program, SS_OP_STORE, Target, Value, (SSOperand){0});
+        Emit(Program, SS_OP_STORE_MEM, Base, OpValue, Index);
+
+        return;
+    }
+ 
+    if (IsMemberAccess(Target)) {
+        SSOperand Base = LowerExpression(Target->Binary.Left, Program);
+        SSOperand Field = MakeSymbol(MemberFieldName(Target));
+        SSOperand OpValue = LowerExpression(Value, Program);
+        
+        Emit(Program, SS_OP_STORE_MEM, Base, OpValue, Field);
+        
+        return;
+    }
+ 
+    SSOperand TargetOp = LowerExpression(Target, Program);
+    SSOperand ValueOp  = LowerExpression(Value,  Program);
+
+    Emit(Program, SS_OP_STORE, TargetOp, ValueOp, (SSOperand){0});
 }
 
 static void LowerVariableDeclaration(ASTStatement *Statement, SSProgram *Program) {
@@ -415,17 +467,21 @@ static void LowerIf(ASTStatement *Statement, SSProgram *Program) {
 static void LowerWhile(ASTStatement *Statement, SSProgram *Program) {
     const char *LabelStart = NewLabel();
     const char *LabelEnd = NewLabel();
-
+ 
     Emit(Program, SS_OP_LABEL, MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
-
+ 
     SSOperand Condition = LowerExpression(Statement -> While.Condition, Program);
 
     Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelEnd), Condition, (SSOperand){0});
-
+ 
+    PushLoop(LabelStart, LabelEnd);
+ 
     for (size_t i = 0; i < Statement -> While.Count; i++)
         LowerStatement(Statement -> While.Body[i], Program);
-
-    Emit(Program, SS_OP_JMP, MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
+ 
+    PopLoop();
+ 
+    Emit(Program, SS_OP_JMP,   MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
     Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd), (SSOperand){0}, (SSOperand){0});
 }
 
@@ -439,15 +495,12 @@ static void LowerFor(ASTStatement *Statement, SSProgram *Program) {
 
         Emit(Program, SS_OP_STORE, Iteration, Start, (SSOperand){0});
     }
- 
+
     Emit(Program, SS_OP_LABEL, MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
-
+ 
     if (Statement -> For.End) {
-        SSOperand Iteration = MakeVariable(Statement -> For.Iterator);
-        SSOperand End = LowerExpression(Statement -> For.End, Program);
-        SSOperand Condition = MakeRegister();
+        SSOperand Condition = LowerExpression(Statement -> For.End, Program);
 
-        Emit(Program, SS_OP_LT, Condition, Iteration, End);
         Emit(Program, SS_OP_JMP_IF_NOT, MakeLabel(LabelEnd), Condition, (SSOperand){0});
     }
  
@@ -458,11 +511,19 @@ static void LowerFor(ASTStatement *Statement, SSProgram *Program) {
  
     PopLoop();
  
-    if (Statement -> For.Step)
-        LowerExpression(Statement -> For.Step, Program);
+    if (Statement -> For.Step) {
+        ASTExpression *Step = Statement -> For.Step;
+        SSOperand StepResult = LowerExpression(Step, Program);
+        
+        if (Step -> Kind == EXPR_BINARY && !Step -> Binary.IsAssignment && Step -> Binary.Left != NULL && Step -> Binary.Left->Kind == EXPR_IDENTIFIER) {
+            SSOperand Iteration = MakeVariable(Step -> Binary.Left -> Identifier);
+
+            Emit(Program, SS_OP_STORE, Iteration, StepResult, (SSOperand){0});
+        }
+    }
  
     Emit(Program, SS_OP_JMP,   MakeLabel(LabelStart), (SSOperand){0}, (SSOperand){0});
-    Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd),   (SSOperand){0}, (SSOperand){0});
+    Emit(Program, SS_OP_LABEL, MakeLabel(LabelEnd), (SSOperand){0}, (SSOperand){0});
 }
 
 static void LowerReturn(ASTStatement *Statement, SSProgram *Program) {
@@ -539,7 +600,7 @@ static void LowerMatch(ASTStatement *Statement, SSProgram *Program) {
         for (size_t j = 0; j < Arm -> BodyCount; j++)
             LowerStatement(Arm -> Body[j], Program);
  
-        Emit(Program, SS_OP_JMP,   MakeLabel(LabelEnd),  (SSOperand){0}, (SSOperand){0});
+        Emit(Program, SS_OP_JMP, MakeLabel(LabelEnd),  (SSOperand){0}, (SSOperand){0});
         Emit(Program, SS_OP_LABEL, MakeLabel(LabelNext), (SSOperand){0}, (SSOperand){0});
     }
  
@@ -676,7 +737,7 @@ static void LowerSubprogram(ASTSubprogram *Subprogram, SSProgram *Program) {
     for (size_t i = 0; i < Subprogram -> BodyCount; i++)
         LowerStatement(Subprogram -> Body[i], Program);
  
-    if (Subprogram -> BodyCount == 0 || Subprogram -> Body[Subprogram -> BodyCount - 1]->Kind != STMT_RETURN) {
+    if (Subprogram -> BodyCount == 0 || Subprogram -> Body[Subprogram -> BodyCount - 1] -> Kind != STMT_RETURN) {
         Emit(Program, SS_OP_RET, (SSOperand){0}, (SSOperand){0}, (SSOperand){0});
     }
  
@@ -719,27 +780,18 @@ void SSOperandToString(SSOperand Op, char *Buffer, size_t Size) {
 
             break;
 
+        case SS_OPERAND_SYMBOL:
+            snprintf(Buffer, Size, "%s", Op.Variable);
+
+            break;
+
         case SS_OPERAND_CONSTANT:
-            switch (Op.Constant.Kind) {
-                case CONST_STRING:
-                    snprintf(Buffer, Size, "\"%s\"", Op.Constant.String);
-
-                    break;
-
-                case CONST_FLOAT:
-                    snprintf(Buffer, Size, "%g", Op.Constant.Float);
-
-                    break;
-
-                case CONST_INT:
-                    snprintf(Buffer, Size, "%lld", (long long) Op.Constant.Int);
-
-                    break;
-
-                default:
-                    snprintf(Buffer, Size, "0");
-
-                    break;
+            if (Op.Constant.String) {
+                snprintf(Buffer, Size, "\"%s\"", Op.Constant.String);
+            } else if (Op.Constant.Int == SS_FLOAT_SENTINEL) {
+                snprintf(Buffer, Size, "%g", Op.Constant.Float);
+            } else {
+                snprintf(Buffer, Size, "%lld", (long long) Op.Constant.Int);
             }
 
             break;

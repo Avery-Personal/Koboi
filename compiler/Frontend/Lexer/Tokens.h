@@ -1,6 +1,7 @@
 #ifndef TOKENS_H
 #define TOKENS_H
 
+    #include <stdlib.h>
     #include <stdint.h>
 
     typedef enum {
