@@ -5,5 +5,6 @@
     #include "../Frontend/Parser/Parser.h"
     #include "../Middleend/SyntaxTapeS/SS.h"
     #include "../Middleend/Semantics/SSSS.h"
+    #include "../Backend/Core/KoboiVM.h"
 
 #endif

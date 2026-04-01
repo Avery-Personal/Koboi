@@ -93,6 +93,18 @@
         STMT_DEFER
     } ASTStmtKind;
 
+    typedef struct {
+        uint32_t Line;
+        uint32_t Column;
+        uint32_t Offset;
+
+        uint32_t EndLine;
+        uint32_t EndColumn;
+        uint32_t EndOffset;
+
+        uint32_t FileID;
+    } ASTSource;
+
     typedef struct ASTType {
         ASTTypeKind Kind;
 
@@ -105,18 +117,6 @@
 
         int IsSlice;
     } ASTType;
-
-    typedef struct {
-        uint32_t Line;
-        uint32_t Column;
-        uint32_t Offset;
-
-        uint32_t EndLine;
-        uint32_t EndColumn;
-        uint32_t EndOffset;
-
-        uint32_t FileID;
-    } ASTSource;
 
     typedef struct ASTExpression ASTExpression;
 

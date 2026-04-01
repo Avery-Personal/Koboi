@@ -1,20 +1,10 @@
-#ifndef VIRTUAL_MACHINE_CONTEXT_H
-#define VIRTUAL_MACHINE_CONTEXT_H
-
-    typedef enum {
-        KVM_STATE_UNINITIALIZED,
-        KVM_STATE_READY,
-        KVM_STATE_RUNNING,
-        KVM_STATE_PAUSED,
-        KVM_STATE_HALTED,
-
-        KVM_STATE_ERROR
-    } KoboiVirtualMachineState;
+#ifndef KVM_CONTEXT_H
+#define KVM_CONTEXT_H
     
     typedef enum {
         KOBOI_POLICY_SAFE,
         KOBOI_POLICY_CHECKINGS,
-        KOBOI_POLICY_UNSAFE,
+        KOBOI_POLICY_UNSAFE,    
         KOBOI_POLICY_TRUSTED_UNSAFE
     } KoboiSafetyMode;
 
@@ -24,5 +14,8 @@
         void *CurrentWorld;
         void *ModuleRegistry;
     } KVMContext;
+
+    KVMContext *KVMContextCreate(void);
+    void KVMContextDestroy(KVMContext *Context);
 
 #endif

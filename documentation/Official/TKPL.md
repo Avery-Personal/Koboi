@@ -20,8 +20,7 @@
 ###### 1.3.4 Standard Libraries
 ##### 1.4.0 Basics
 ###### 1.4.1 Initializing variables
-###### 1.4.2 Implicit vs Explicit
-###### 1.4.3 Data Types
+###### 1.4.2 Data Types
 
 ---
 
@@ -87,9 +86,13 @@ Sendo is the shipping manager for Koboi, wrapped over Pako, by default, as an ea
 
 #### 1.3.4 Standard Libraries
 
-in dev
+The usage of standard libraries in Koboi is a module based system, using the `using` keyword, followed by main module, double-colons, then the sub-module, `using std::io`.
 
 ### 1.4.0 Basics
 #### 1.4.1 Initializing variables
 
-To initialize variables in Koboi, 
+To initialize variables in Koboi, you have 3 main standards, first via inferred initialization. To create an inferred variable, you create the variable name, `VAR_NAME`, followed up by a value, `VAR_NAME = 5`. The compiler assumes a data type for you based off the value given, staying as a static type.
+
+Creating explicit variables, is made in two ways, the first being the type, `TYPE`, followed by variable name, and value, `int VAR_NAME2 = 15`. The second way of creating such is the variable name, followed by the type, `VAR_NAME : TYPE`, followed by the value, `VAR_NAME3 : float = 12.345`.
+
+

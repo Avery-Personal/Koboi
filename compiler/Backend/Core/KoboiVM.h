@@ -9,6 +9,16 @@
     typedef struct CompileTimeVM CompileTimeVM;
 
     typedef enum {
+        KVM_STATE_UNINITIALIZED,
+        KVM_STATE_READY,
+        KVM_STATE_RUNNING,
+        KVM_STATE_PAUSED,
+        KVM_STATE_HALTED,
+
+        KVM_STATE_ERROR
+    } KoboiVirtualMachineState;
+
+    typedef enum {
         KOBOI_EXECUTION_MODE_RUNTIME,
         KOBOI_EXECUTION_MODE_COMPILETIME
     } KoboiExecutionMode;
@@ -20,13 +30,21 @@
     } KVMConfiguration;
 
     typedef struct {
+        KoboiVirtualMachineState State;
+
         KoboiExecutionMode Mode;
         KVMConfiguration Configuration;
 
-        KVMContext *context;
+        KVMContext *Context;
 
         RuntimeVM *RuntimeVM;
         CompileTimeVM *CompileTimeVM;
     } KoboiVM;
+
+    KoboiVM *KVMCreate(KVMConfiguration Configuration);
+    void KVMDestroy(KoboiVM *KVM);
+
+    int KVMInitialize(KoboiVM *KVM);
+    void KVMReset(KoboiVM *KVM);
 
 #endif

@@ -56,6 +56,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    KVMConfiguration __KOBOI_VIRTUAL_MACHINE_CONFIGURATION__ = {0};
+
+    __KOBOI_VIRTUAL_MACHINE_CONFIGURATION__.DEBUG = 0;
+    __KOBOI_VIRTUAL_MACHINE_CONFIGURATION__.RegisterCount = 0;
+
+    KoboiVM *__KOBOI_VIRTUAL_MACHINE__ = KVMCreate(__KOBOI_VIRTUAL_MACHINE_CONFIGURATION__);
+
     free(Source);
 
     return 0;
