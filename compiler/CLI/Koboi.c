@@ -50,9 +50,9 @@ int main(int argc, char **argv) {
     SSProgram *__SYNTAX_TAPES__ = LowerSS(__AST__);
     SSSSContext *__SYNTAX_TAPES_SEMANTICS_SYSTEM__ = CreateContext();
 
-    int __SSSS_ERROR__ = AnalyzeProgram(__SYNTAX_TAPES_SEMANTICS_SYSTEM__, __SYNTAX_TAPES__);
+    //int __SSSS_ERROR__ = AnalyzeProgram(__SYNTAX_TAPES_SEMANTICS_SYSTEM__, __SYNTAX_TAPES__);
 
-    if (__PARSER__.HasError || __SSSS_ERROR__) {
+    if (__PARSER__.HasError) {
         return 1;
     }
 
