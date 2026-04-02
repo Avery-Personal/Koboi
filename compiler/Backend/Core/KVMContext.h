@@ -1,5 +1,7 @@
 #ifndef KVM_CONTEXT_H
 #define KVM_CONTEXT_H
+
+    #include "../../drivers/Driver.h"
     
     typedef enum {
         KOBOI_POLICY_SAFE,
@@ -13,6 +15,9 @@
 
         void *CurrentWorld;
         void *ModuleRegistry;
+
+        KoboiDriverRegistry DriverRegistry;
+        KoboiDriverContext DriverContexts[MAX_DRIVERS];
     } KVMContext;
 
     KVMContext *KVMContextCreate(void);

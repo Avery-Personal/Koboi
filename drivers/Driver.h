@@ -3,6 +3,7 @@
 
     #include <stdint.h>
 
+    #include "Core/DriverRegistry.h"
     #include "Core/DriverCapabilities.h"
 
     typedef struct KoboiVM KoboiVM;
