@@ -7,6 +7,7 @@
     #include "KVMState.h"
     #include "../VirtualMachines/RuntimeKVM/RuntimeKVM.h"
     #include "../VirtualMachines/CompiletimeKVM/CompiletimeKVM.h"
+    #include "../Bytecode/BytecodeFormat.h"
 
     //typedef struct RuntimeKVM RuntimeKVM;
     //typedef struct CompileTimeKVM CompileTimeKVM;

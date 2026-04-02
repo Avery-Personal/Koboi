@@ -4,12 +4,14 @@
 
 #include "CompiletimeKVM.h"
 
-CompileTimeKVM *CompileTimeKVMCreate() {
+CompileTimeKVM *CompileTimeKVMCreate(KVMContext *Context) {
     CompileTimeKVM *KVM = malloc(sizeof(CompileTimeKVM));
     if (!KVM)
         return NULL;
 
     memset(KVM, 0, sizeof(CompileTimeKVM));
+
+    KVM -> Context = Context;
 
     return KVM;
 }

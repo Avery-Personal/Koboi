@@ -62,9 +62,10 @@ int main(int argc, char **argv) {
     __KOBOI_VIRTUAL_MACHINE_CONFIGURATION__.RegisterCount = 0;
 
     KoboiVM *__KOBOI_VIRTUAL_MACHINE__ = KVMCreate(__KOBOI_VIRTUAL_MACHINE_CONFIGURATION__);
+    KVMBytecode *__KOBOI_VIRTUAL_MACHINE_BYTECODE__;
 
     KVMInitialize(__KOBOI_VIRTUAL_MACHINE__);
-    KVMRun(__KOBOI_VIRTUAL_MACHINE__, "");
+    KVMRun(__KOBOI_VIRTUAL_MACHINE__, __KOBOI_VIRTUAL_MACHINE_BYTECODE__);
 
     free(Source);
 

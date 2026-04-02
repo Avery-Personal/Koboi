@@ -34,7 +34,7 @@ int KVMInitialize(KoboiVM *KVM) {
     if (!KVM -> RuntimeKVM)
         return 0;
 
-    KVM -> CompileTimeKVM = CompileTimeKVMCreate();
+    KVM -> CompileTimeKVM = CompileTimeKVMCreate(KVM -> Context);
     KVM -> State = KVM_STATE_READY;
 
     return 1;
@@ -56,6 +56,16 @@ void KVMDestroy(KoboiVM *KVM) {
     free(KVM);
 }
 
-int KVMRun(KoboiVM *KVM, void *BYTECODE_PLACEHOLDER) {
+int KVMRun(KoboiVM *KVM, KVMBytecode *BytecodeProgram) {
+    if (KVM -> Mode == KOBOI_EXECUTION_MODE_RUNTIME) {
+        RuntimeKVMLoad(KVM -> RuntimeKVM, BytecodeProgram -> Data, BytecodeProgram -> Size);
+
+        return RuntimeKVMRun(KVM -> RuntimeKVM);
+    }
+
+    if (KVM -> Mode == KOBOI_EXECUTION_MODE_COMPILETIME) {
+        return CompileTimeExecute(KVM -> CompileTimeKVM, BytecodeProgram -> Data, BytecodeProgram -> Size);
+    }
+
     return 0;
 }
