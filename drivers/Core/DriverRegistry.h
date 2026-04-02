@@ -3,9 +3,9 @@
 
     #include <stdlib.h>
 
-    #include "../Driver.h"
-
     #define MAX_DRIVERS 32
+
+    typedef struct KoboiDriver KoboiDriver;
 
     typedef struct {
         KoboiDriver *Drivers[MAX_DRIVERS];

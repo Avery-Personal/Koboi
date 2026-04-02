@@ -48,10 +48,14 @@ void KVMDestroy(KoboiVM *KVM) {
         RuntimeKVMDestroy(KVM -> RuntimeKVM);
 
     if (KVM -> CompileTimeKVM)
-        CompileTimeVMDestroy(KVM -> CompileTimeKVM);
+        CompileTimeKVMDestroy(KVM -> CompileTimeKVM);
 
     if (KVM -> Context)
         KVMContextDestroy(KVM -> Context);
 
     free(KVM);
+}
+
+int KVMRun(KoboiVM *KVM, void *BYTECODE_PLACEHOLDER) {
+    return 0;
 }

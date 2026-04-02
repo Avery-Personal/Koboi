@@ -4,19 +4,12 @@
     #include <stdint.h>
 
     #include "KVMContext.h"
+    #include "KVMState.h"
+    #include "../VirtualMachines/RuntimeKVM/RuntimeKVM.h"
+    #include "../VirtualMachines/CompiletimeKVM/CompiletimeKVM.h"
 
-    typedef struct RuntimeKVM RuntimeKVM;
-    typedef struct CompileTimeKVM CompileTimeKVM;
-
-    typedef enum {
-        KVM_STATE_UNINITIALIZED,
-        KVM_STATE_READY,
-        KVM_STATE_RUNNING,
-        KVM_STATE_PAUSED,
-        KVM_STATE_HALTED,
-
-        KVM_STATE_ERROR
-    } KoboiVirtualMachineState;
+    //typedef struct RuntimeKVM RuntimeKVM;
+    //typedef struct CompileTimeKVM CompileTimeKVM;
 
     typedef enum {
         KOBOI_EXECUTION_MODE_RUNTIME,
@@ -29,7 +22,7 @@
         uint32_t RegisterCount;
     } KVMConfiguration;
 
-    typedef struct {
+    typedef struct KoboiVM {
         KoboiVirtualMachineState State;
 
         KoboiExecutionMode Mode;
@@ -46,5 +39,7 @@
 
     int KVMInitialize(KoboiVM *KVM);
     void KVMReset(KoboiVM *KVM);
+
+    int KVMRun(KoboiVM *KVM, void *BYTECODE_PLACEHOLDER);
 
 #endif

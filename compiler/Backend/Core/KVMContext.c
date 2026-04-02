@@ -8,3 +8,8 @@ KVMContext *KVMContextCreate(void) {
 
     Context -> SafetyMode = KOBOI_POLICY_SAFE;
 }
+
+void KVMContextDestroy(KVMContext *Context) {
+    free(Context -> CurrentWorld);
+    free(Context);
+}
