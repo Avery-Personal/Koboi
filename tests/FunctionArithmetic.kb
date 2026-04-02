@@ -1,0 +1,15 @@
+using std::io
+
+fn Add(a : int, b : int) {
+    return a + b
+}
+
+fn main() {
+    Result = Add(2, 3)
+
+    if Result != 5 {
+        EXIT(1)
+    }
+
+    EXIT(0)
+}

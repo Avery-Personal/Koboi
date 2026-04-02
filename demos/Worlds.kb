@@ -1,0 +1,13 @@
+using std::io
+
+world Alpha {
+    fn main() {
+        pln("Running Alpha")
+    }
+}
+
+world Beta {
+    fn main() {
+        pln("Running Beta")
+    }
+}

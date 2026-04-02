@@ -1,0 +1,16 @@
+using std::io
+
+macro repeat(LOOPS, BODY) {
+    int __ITERATION__ = 0
+
+    while __ITERATION__ < LOOPS {
+        BODY
+        __ITERATION__ += 1
+    }
+}
+
+fn main() {
+    repeat(3, {
+        pln("Prototype loop")
+    })
+}

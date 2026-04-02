@@ -1,0 +1,15 @@
+using std::io
+
+module MathUtil {
+    export fn Square(x : int) {
+        return x * x
+    }
+
+    static Calls = 0
+}
+
+fn main() {
+    Result = MathUtil::Square(5)
+
+    pln(Result)
+}

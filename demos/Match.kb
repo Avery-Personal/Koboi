@@ -1,0 +1,17 @@
+using std::io
+
+enum Result {
+    OK,
+    ERROR
+}
+
+fn ShowStatus(Status : Result) {
+    match Status {
+        OK >> pln("Everything is fine"),
+        ERROR >> pln("Something failed")
+    }
+}
+
+fn main() {
+    ShowStatus(OK)
+}

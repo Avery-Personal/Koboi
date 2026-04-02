@@ -1,0 +1,18 @@
+using std::io
+
+fn main() {
+    a = 1
+    b = 2
+
+    transaction {
+        a += 5
+        b += 10
+
+        if b > 20 {
+            rollback
+        }
+    }
+
+    pln("a:", a)
+    pln("b:", b)
+}
