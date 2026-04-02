@@ -3,8 +3,8 @@
 
 #include "KVMContext.h"
 
-KVMContext *KVMContextCreate(void) {
-    KVMContext *Context = malloc(sizeof(Context));
+KVMContext *KVMContextCreate(void) {    
+    KVMContext *Context = malloc(sizeof(KVMContext));
 
     Context -> SafetyMode = KOBOI_POLICY_SAFE;
 }
