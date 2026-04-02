@@ -5,8 +5,8 @@
 
     #include "KVMContext.h"
 
-    typedef struct RuntimeVM RuntimeVM;
-    typedef struct CompileTimeVM CompileTimeVM;
+    typedef struct RuntimeKVM RuntimeKVM;
+    typedef struct CompileTimeKVM CompileTimeKVM;
 
     typedef enum {
         KVM_STATE_UNINITIALIZED,
@@ -37,8 +37,8 @@
 
         KVMContext *Context;
 
-        RuntimeVM *RuntimeVM;
-        CompileTimeVM *CompileTimeVM;
+        RuntimeKVM *RuntimeKVM;
+        CompileTimeKVM *CompileTimeKVM;
     } KoboiVM;
 
     KoboiVM *KVMCreate(KVMConfiguration Configuration);
