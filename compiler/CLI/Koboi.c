@@ -63,6 +63,9 @@ int main(int argc, char **argv) {
 
     KoboiVM *__KOBOI_VIRTUAL_MACHINE__ = KVMCreate(__KOBOI_VIRTUAL_MACHINE_CONFIGURATION__);
 
+    KVMInitialize(__KOBOI_VIRTUAL_MACHINE__);
+    KVMRun();
+
     free(Source);
 
     return 0;
