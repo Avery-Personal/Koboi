@@ -21,6 +21,13 @@
         int DEBUG;
 
         uint32_t RegisterCount;
+        int EnableTracing;
+
+        uint32_t MaxStackSize;
+        uint32_t MaxCallDepth;
+
+        int EnableGC;
+        int EnableFFI;
     } KVMConfiguration;
 
     typedef struct KoboiVM {
@@ -41,6 +48,6 @@
     int KVMInitialize(KoboiVM *KVM);
     void KVMReset(KoboiVM *KVM);
 
-    int KVMRun(KoboiVM *KVM, void *BYTECODE_PLACEHOLDER);
+    int KVMRun(KoboiVM *KVM, KVMBytecode *BytecodeProgram);
 
 #endif

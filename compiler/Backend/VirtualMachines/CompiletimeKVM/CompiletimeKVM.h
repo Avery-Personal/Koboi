@@ -1,7 +1,9 @@
 #ifndef COMPILETIME_KVM_H
 #define COMPILETIME_KVM_H
 
-    struct KVMContext;
+    #include <stdint.h>
+
+    typedef struct KVMContext KVMContext;
 
     typedef struct {
         uint32_t RegisterCount;

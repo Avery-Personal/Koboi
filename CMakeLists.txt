@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.80) # Someone said this is the best standard; never used CMake before so I'll trust them blindly.
+cmake_minimum_required(VERSION 3.7.2)
 
 project(KoboiC)
 
