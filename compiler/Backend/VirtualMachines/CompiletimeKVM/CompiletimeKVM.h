@@ -1,6 +1,8 @@
 #ifndef COMPILETIME_KVM_H
 #define COMPILETIME_KVM_H
 
+#include <stdint.h>
+
     struct KVMContext;
 
     typedef struct {
