@@ -1,9 +1,9 @@
 #ifndef COMPILETIME_KVM_H
 #define COMPILETIME_KVM_H
 
-#include <stdint.h>
+    #include <stdint.h>
 
-    struct KVMContext;
+    typedef struct KVMContext KVMContext;
 
     typedef struct {
         uint32_t RegisterCount;
@@ -22,7 +22,9 @@
         struct KVMContext *Context;
     } CompileTimeKVM;
     
-    CompileTimeKVM *CompileTimeKVMCreate();
+    CompileTimeKVM *CompileTimeKVMCreate(KVMContext *Context);
     void CompileTimeKVMDestroy(CompileTimeKVM *KVM);
+
+    int CompileTimeExecute(CompileTimeKVM *KVM, const uint8_t *Bytecode, uint32_t Size);
 
 #endif
