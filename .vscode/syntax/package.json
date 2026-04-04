@@ -1,0 +1,25 @@
+{
+  "name": "koboi-language",
+  "displayName": "Koboi Language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "koboi",
+        "aliases": ["Koboi", "koboi"],
+        "extensions": [".kb", ".kbi", ".kob", ".koi", ".cb", ".cby", ".koboi"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "koboi",
+        "scopeName": "source.koboi",
+        "path": "./syntaxes/koboi.tmLanguage.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "name": "Koboi",
+  "scopeName": "source.koboi",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#modifiers" },
+    { "include": "#functions" },
+    { "include": "#operators" },
+    { "include": "#macros" }
+  ],
+
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.koboi",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.koboi",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.koboi",
+          "begin": "\"",
+          "end": "\""
+        }
+      ]
+    },
+
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.koboi",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.koboi",
+          "match": "\\b(if|else|for|while|break|return|match|rollback|defer|unsafe|safe|trusted|compiletime|assume|check)\\b"
+        },
+        {
+          "name": "keyword.declaration.koboi",
+          "match": "\\b(fn|struct|enum|state|macro|module|world|context|concept|partial|env|region|transaction|reactive)\\b"
+        },
+        {
+          "name": "keyword.other.koboi",
+          "match": "\\b(using|with|requires|provides|extends|expose)\\b"
+        }
+      ]
+    },
+
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.koboi",
+          "match": "\\b(int|float|String|File|bool|void)\\b"
+        }
+      ]
+    },
+
+    "modifiers": {
+      "patterns": [
+        {
+          "name": "storage.modifier.koboi",
+          "match": "\\b(global|static|const|private|export|silent|linear|history|symbolic|noalias|sys)\\b"
+        }
+      ]
+    },
+
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.koboi",
+          "match": "\\bfn\\s+([A-Za-z_][A-Za-z0-9_]*)"
+        },
+        {
+          "name": "entity.name.function.call.koboi",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()"
+        }
+      ]
+    },
+
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.koboi",
+          "match": "=|\\+=|-=|\\*=|/="
+        },
+        {
+          "name": "keyword.operator.comparison.koboi",
+          "match": "==|!=|>|<|>=|<="
+        },
+        {
+          "name": "keyword.operator.koboi",
+          "match": "\\+|-|\\*|/"
+        },
+        {
+          "name": "keyword.operator.ownership.koboi",
+          "match": "&|@|\\.\\.|#|\\$|!\\$"
+        },
+        {
+          "name": "keyword.operator.match.koboi",
+          "match": ">>"
+        }
+      ]
+    },
+
+    "macros": {
+      "patterns": [
+        {
+          "name": "entity.name.macro.koboi",
+          "match": "\\bmacro\\s+([A-Za-z_][A-Za-z0-9_]*)"
+        },
+        {
+          "name": "support.function.macro.koboi",
+          "match": "\\b[A-Z_][A-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}
