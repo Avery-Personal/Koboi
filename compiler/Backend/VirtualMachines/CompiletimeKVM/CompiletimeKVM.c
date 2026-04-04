@@ -18,6 +18,7 @@ CompileTimeKVM *CompileTimeKVMCreate(KVMContext *Context) {
 
 void CompileTimeKVMDestroy(CompileTimeKVM *KVM) {
     free(KVM -> Environment);
+    free(KVM -> MacroContext);
     free(KVM);
 }
 

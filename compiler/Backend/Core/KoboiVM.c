@@ -58,17 +58,3 @@ void KVMDestroy(KoboiVM *KVM) {
 
     free(KVM);
 }
-
-int KVMRun(KoboiVM *KVM, KVMBytecode *BytecodeProgram) {
-    if (KVM -> Mode == KOBOI_EXECUTION_MODE_RUNTIME) {
-        RuntimeKVMLoad(KVM -> RuntimeKVM, BytecodeProgram);
-
-        return RuntimeKVMRun(KVM -> RuntimeKVM);
-    }
-
-    if (KVM -> Mode == KOBOI_EXECUTION_MODE_COMPILETIME) {
-        return CompileTimeExecute(KVM -> CompileTimeKVM, BytecodeProgram -> Data, BytecodeProgram -> Size);
-    }
-
-    return 0;
-}

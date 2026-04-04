@@ -48,6 +48,4 @@
     int KVMInitialize(KoboiVM *KVM);
     void KVMReset(KoboiVM *KVM);
 
-    int KVMRun(KoboiVM *KVM, KVMBytecode *BytecodeProgram);
-
 #endif

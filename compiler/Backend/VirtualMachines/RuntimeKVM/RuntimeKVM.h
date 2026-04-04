@@ -22,5 +22,6 @@
 
     int RuntimeKVMLoad(RuntimeKVM *KVM, KVMBytecode *Bytecode);
     int RuntimeKVMRun(RuntimeKVM *KVM);
+    int RuntimeKVMStep(RuntimeKVM *KVM);
 
 #endif

@@ -106,3 +106,7 @@ int RuntimeKVMRun(RuntimeKVM *KVM) {
 
     return 1;
 }
+
+int RuntimeKVMStep(RuntimeKVM *KVM) {
+    
+}
