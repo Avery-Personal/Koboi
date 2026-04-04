@@ -29,12 +29,12 @@ void RuntimeKVMDestroy(RuntimeKVM *KVM) {
     free(KVM);
 }
 
-int RuntimeKVMLoad(RuntimeKVM *KVM, const uint8_t *Bytecode, uint32_t Size) {
+int RuntimeKVMLoad(RuntimeKVM *KVM, KVMBytecode *Bytecode) {
     if (!KVM || !Bytecode)
         return 0;
 
-    KVM -> Bytecode = Bytecode;
-    KVM -> BytecodeSize = Size;
+    KVM -> Bytecode = Bytecode -> Data;
+    KVM -> BytecodeSize = Bytecode -> Size;
     KVM -> InstructionPointer = 0;
 
     return 1;
@@ -101,6 +101,8 @@ int RuntimeKVMRun(RuntimeKVM *KVM) {
                 return 0;
         }
     }
+
+    KVM -> InstructionPointer = Reader.InstructionPointer;
 
     return 1;
 }

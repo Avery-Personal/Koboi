@@ -19,7 +19,7 @@
         void *Environment;
         void *MacroContext;
 
-        struct KVMContext *Context;
+        KVMContext *Context;
     } CompileTimeKVM;
     
     CompileTimeKVM *CompileTimeKVMCreate(KVMContext *Context);

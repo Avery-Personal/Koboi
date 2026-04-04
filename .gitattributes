@@ -4,5 +4,6 @@
 examples/ linguist-detectable=true
 examples/ linguist-vendored=false
 
+*.kb linguist-language=Koboi
 *.kb linguist-detectable=true
 *.kb linguist-generated=false

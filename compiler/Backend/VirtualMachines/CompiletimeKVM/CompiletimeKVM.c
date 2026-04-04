@@ -20,3 +20,7 @@ void CompileTimeKVMDestroy(CompileTimeKVM *KVM) {
     free(KVM -> Environment);
     free(KVM);
 }
+
+int CompileTimeExecute(CompileTimeKVM *KVM, const uint8_t *Bytecode, uint32_t Size) {
+
+}

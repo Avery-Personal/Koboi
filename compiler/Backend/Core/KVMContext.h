@@ -10,7 +10,7 @@
         KOBOI_POLICY_TRUSTED_UNSAFE
     } KoboiSafetyMode;
 
-    typedef struct {
+    typedef struct KVMContext {
         KoboiSafetyMode SafetyMode;
 
         void *CurrentWorld;

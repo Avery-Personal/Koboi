@@ -3,6 +3,8 @@
 
     #include <stdint.h>
 
+    #include "../../Bytecode/BytecodeFormat.h"
+
     typedef struct {
         uint32_t RegisterCount;
         int32_t *Registers;
@@ -18,7 +20,7 @@
     RuntimeKVM *RuntimeKVMCreate(uint32_t RegisterCount);
     void RuntimeKVMDestroy(RuntimeKVM *KVM);
 
-    int RuntimeKVMLoad(RuntimeKVM *KVM, const uint8_t *Bytecode, uint32_t Size);
+    int RuntimeKVMLoad(RuntimeKVM *KVM, KVMBytecode *Bytecode);
     int RuntimeKVMRun(RuntimeKVM *KVM);
 
 #endif

@@ -4,6 +4,7 @@
     #include <stdint.h>
 
     typedef uint8_t Byte;
+    typedef const Byte CONST_BYTE;
 
     typedef struct {
         uint32_t Magic;
@@ -20,7 +21,7 @@
     } KVMBytecodeHeader;
 
     typedef struct {
-        const Byte *Data;
+        CONST_BYTE *Data;
         uint32_t Size;
     } KVMBytecode;
 
