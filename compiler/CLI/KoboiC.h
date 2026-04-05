@@ -6,5 +6,6 @@
     #include "../Middleend/SyntaxTapeS/SS.h"
     #include "../Middleend/Semantics/SSSS.h"
     #include "../Backend/Core/KoboiVM.h"
+    #include "../Backend/Execution/KVMExecution.h"
 
 #endif
