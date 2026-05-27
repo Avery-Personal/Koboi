@@ -6,6 +6,8 @@
 
 KVMContext *KVMContextCreate(void) {    
     KVMContext *Context = malloc(sizeof(KVMContext));
+    if (!Context)
+        return NULL;
 
     memset(Context, 0, sizeof(KVMContext));
 

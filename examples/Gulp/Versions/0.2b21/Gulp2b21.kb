@@ -413,7 +413,7 @@ compiletime fn factorial(n: int) {
 fn GetFile() requires env filesystem {
     return OpenFile("a.txt")
 }
-
+    
 fn main() provides env filesystem {
     FILE : File = GetFile()
     
@@ -477,6 +477,7 @@ world Derived2 extends Base2 {
 world A {
     k = 1
 }
+
 world B extends A {
     k = 2
 }

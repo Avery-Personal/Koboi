@@ -35,7 +35,6 @@ int RuntimeKVMLoad(RuntimeKVM *KVM, KVMBytecode *Bytecode) {
 
     KVM -> Bytecode = Bytecode -> Data;
     KVM -> BytecodeSize = Bytecode -> Size;
-    KVM -> InstructionPointer = 0;
 
     return 1;
 }
@@ -50,9 +49,9 @@ int RuntimeKVMRun(RuntimeKVM *KVM) {
 
     Reader.Data = KVM -> Bytecode;
     Reader.Size = KVM -> BytecodeSize;
-    Reader.InstructionPointer = KVM -> InstructionPointer;
+    Reader.InstructionPointer = 0;
 
-    while (KVM -> Running && KVM -> InstructionPointer < KVM -> BytecodeSize) {
+    while (KVM -> Running && Reader.InstructionPointer < KVM -> BytecodeSize) {
         uint8_t Op = KVMReaderReadU8(&Reader);
 
         switch (Op) {
@@ -101,8 +100,6 @@ int RuntimeKVMRun(RuntimeKVM *KVM) {
                 return 0;
         }
     }
-
-    KVM -> InstructionPointer = Reader.InstructionPointer;
 
     return 1;
 }

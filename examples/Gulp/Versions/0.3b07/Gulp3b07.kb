@@ -2,7 +2,7 @@
 
     Copyright 2026 © AveriC
 
-    Koboi Standardized Syntax Version 0.6b07
+    Koboi Standardized Syntax Version 0.3b07
 
     This is the DUMP file for Koboi. This means that it is a DUMP of all features of Koboi, to keep track of what it has, capabilities, etc.
     This file is NOT compilable for standard Koboi, & WILL error; all shown cases of runtime situations (c += 1), does NOT work, as not inside of a function/callable context.
@@ -370,31 +370,6 @@ if zz > 5 {
 pln(zz@2b0) // 9
 pln(zz@2) // Error (Multiple branches)
 
-label PrintX {
-    pln(x)
-}
-
-loop MainLoop {
-    pln("Hello, world!")
-
-    if x > 10 {
-        break MainLoop
-    }
-
-    if x < 0 {
-        continue MainLoop
-    }
-
-    loop InnerLoop {
-        if x < 7 && x > 2 {
-            break InnerLoop
-        }
-    }
-}
-
-goto PrintX
-goto MainLoop
-
 env filesystem // Standard environment (Gives access to File data type, FileOpen/FileWrite/FileDelete)
 
 // Checkings mode allows for extensive checks via the compiler & runtime; simple conditions, I.E x > 1 is a simple check that can be made via the compiler, as it can simply check the value of x, then compare it with 1, harder, runtime-based features, I.E x > RandomNumber(1, 5), is passed through the compiler, if it cannot perform an analysis check to prove the check, then it passes it onto the runtime, to check. When a condition is proven false, via the compiler, then it will result in a compile-time error, via runtime, will produce a runtime-error & stop the program.
@@ -571,9 +546,4 @@ nao {
         r1 = r1 * r2
 
         halt
-}
-
-// External usage of other programming languages
-extern "C" {
-    fn printf(...)
 }

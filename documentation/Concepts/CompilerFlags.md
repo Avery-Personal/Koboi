@@ -1,6 +1,10 @@
 # Compiler Flags
 
+## Introduction to compiler flags
+
 Compiler flags in Koboi are a very mixed topic to get into, mainly due to the fact of *when*, exactly, to use it. Flags are a way to talk to the compile & feed information on how to perform a certain task. The compiler flag system is very complex in Koboi, that is, it's full system can be unreadable to beginners, & the remembering of acrynoms can be hard, alongside placement of operators.
+
+## Compiler structure
 
 To start off with compilers, we'll talk about the base structure, then build on from there. The usage of a compiler flag, usually written at the top of the file, although inferred similarly if not the same regardless of file location, allows for you to tell compiler information directly through calls. To indicate a compiler flag in Koboi, you use the `<>` operators. The `^^` operators tell the compiler that the information given is a flag for it to recognize. It is important to note, the usage of `!`, before the call of the compiler flag, `^^`, together as `!^^`, indicates the cancellation of a flag for the compiler.
 
@@ -8,12 +12,20 @@ The usage of a compiler indication, flag, that is, is limited to the scope below
 
 Now that we understand the basics of how compiler flags work, lets get into the actual flags. To use a compiler flag, I.E ONLY safe mode, we need a sector flag, a sector flag is simply a way to indicate the given flag is for sector based information, and/or use cases of the programmer, I.E naming conventions. Sector flags in Koboi are indicated via the `[]` operators, inside of the compiler flag, `^^`, together as `^[]^`. The use case of `!` & its position also matters, regarding before or after the sector flag. The usage of `!` before the sector flag is as stated earlier, the flag to cover the entire file; `!` after the sector flag, `[]!`, indicates global application of the compiler flag for all files.
 
+## Making our first flag
+
 We now know how to create basic flag structures, I.E a sector flag for the whole file, being, `^![]^`. To get into the simplest of flags to start, to get a structural understanding before advanced flags, would be the constant safety mode, `SFM` (Safety Mode). Using the `M` symbol in the sector flag, `[M]`, tells the compiler the flag is mandatory; the follow up is the use of the `<>` operators, standing for feature constants, a feature, for example, being safe mode, `SFM` for compiler flags. The use of a feature flag, I.E `SFM`, is used in the feature constants flag, `<SMF>`. Now we know how to create a full compiler flag in Koboi, I.E global constant use of mandatory safe mode, being, `^[M<SFM>]!^`.
 
+## Advanced flags
+
 The usage of more advanced flags, I.E `^`, standing for ordinary flags, usually paired with `!` & `A`/`B` to cancel a flag, `!^^A^`. If you know the advanced features of Koboi, like the worlds, you'd know they're independent programs that purely grab data from global accessability of the parent-program. To write compiler flags for worlds, you use the `::` operators, inside of the compiler flag, `^^`, together as `^::^`. To grab a specified world of choice, you use `w::` after the first `:` to indicate a world, then the specific one. The combined use, `^::^`, to be added on, after the first `:`, together as `^:w:::^`. Saying we have a world called **Base**, the usage of the specificied world flag would be as so `^:w::Base:^`. An example of such usage, still using the **Base** world, for a file-wide mandatory constant safe-mode, would be like so, `^!:w::Base:[M<SFM>]^`.
+
+## Flag configurations
 
 To make sure compiler flags don't get overriden, use can use the `+` keyword, after the feature constant flag, `<>`, together as `<+>`. This forces the enabling of the flag; opposite of such, to force disable would be the use of the `-` keyword, again, followed by the feature constant flag, `<>`, together as `<->`. All flags are implicitly soft-enabled by default, meaning they can be overridden or disabled via other flags. To explicitly soft-enable a flag for clarity, or to degrade a force-enable to soft-enable, is the `~` keyword, similar to its sister-flag, `+`, it's after the feature constant falg, `<>`, together as `<~>`. To force cancel, you use the `!!` operator before the call of the compiler flag, `^^`, together as `!!^^`, as done via standard cancelling.
 
 Now that we know the base-advanced features, alongside all the basic features, lets get into flag modifiers & flag options. For flag modifiers, such as `M`, used for telling the compiler the flag is mandatory, there a a multitude of other flags, following of such, as so: `M` - Mandatory | `O` - Optional | `S` - Safe-Mode Related | `U` - Unsafe-Mode Related | `T` - Trusted-Unsafe Related | `N` - Naming Convention | `D` - Debug | `A` - Analysis | `I` - Isolation. The usage of a safety-mode based modifier allows for narrowed searches of keywords & rememberance of words, also makes it easier for users to remember; usage of an example with `U`, unsafe mode, to say it's always on would be as so, `^[U<AO>]^`, this is exactly the same as a mandatory constant of `USM`, Unsafe Mode, but allows for more in-depth rather then generic calls of a mode.
+
+## Koboi compiler settings
 
 The flag options, flags inside of feature constant flags OR standardized flags are so: `SFM` - Safety Mode | `USM` - Unsafe Mode | `TUM` - Trusted-unsafe Mode | `KOL` - Koboi Optimization Lenient | `KOS` - Koboi Optimization Standard | `KOST` - Koboi Optimization Strict | `RMC` - Remove Checks | `NAS` - Global Noalias | `ECE` - Extended Const Evalutation | `A` - Above | `B` | `PC` - PascalCase | `cC` - camelCase | `s_c` - snake_case | `fc` - flatcase | `SC` - SCREAMINGCASE. `PC`, PascalCase through `SC`, SCREAMINGCASE, are all part of the `N` flag option for naming convention, but can be paired with `O` for optional usage alongside Koboi standard, PascalCase. The usage of `A`/`B` is in the case of a standard compiler flag, `^^^`, usually during cancellation, `!^^^`, together, for above, as `!^^A^`.

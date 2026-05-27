@@ -38,6 +38,13 @@ int KVMInitialize(KoboiVM *KVM) {
     }
 
     KVM -> CompileTimeKVM = CompileTimeKVMCreate(KVM -> Context);
+    if (!KVM -> CompileTimeKVM) {
+        RuntimeKVMDestroy(KVM -> RuntimeKVM);
+        CompileTimeKVMDestroy(KVM -> CompileTimeKVM);
+
+        return 0;
+    }
+
     KVM -> State = KVM_STATE_READY;
 
     return 1;

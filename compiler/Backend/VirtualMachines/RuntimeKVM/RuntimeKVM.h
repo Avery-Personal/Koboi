@@ -9,8 +9,6 @@
         uint32_t RegisterCount;
         int32_t *Registers;
 
-        uint32_t InstructionPointer;
-
         const uint8_t *Bytecode;
         uint32_t BytecodeSize;
 
